@@ -1,0 +1,31 @@
+version: '3'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: dinghong-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: DingHong@2026
+      MYSQL_DATABASE: dinghong
+    ports:
+      - "3306:3306"
+    volumes:
+      - ./mysql/data:/var/lib/mysql
+
+  redis:
+    image: redis:7.2
+    container_name: dinghong-redis
+    restart: always
+    ports:
+      - "6379:6379"
+
+  nginx:
+    image: nginx:1.25
+    container_name: dinghong-nginx
+    network_mode: host
+    restart: always
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./admin:/usr/share/nginx/admin
+      - ./upload:/data/dinghong/upload

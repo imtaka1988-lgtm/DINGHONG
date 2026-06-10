@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>顶红体育后台 - 比赛直播管理</title>
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="css/common.css" rel="stylesheet">
+</head>
+
+<body>
+<div class="container-fluid px-4 py-4">
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="page-title mb-1">🏀 顶红体育后台</h2>
+        <div class="text-muted">比赛直播管理</div>
+    </div>
+    <div>
+        <a class="btn btn-primary" href="matches.html">比赛管理</a>
+        <a class="btn btn-outline-success" href="ad-config.html">广告配置</a>
+        <a class="btn btn-outline-info" href="wechat-greeting.html">每日欢迎语</a>
+        <a class="btn btn-outline-primary" href="articles.html">AI编辑部</a>
+        <button class="btn btn-outline-secondary" onclick="dhLogout()">退出</button>
+    </div>
+</div>
+
+<div class="card main-card p-3 mb-4">
+    <h5 class="mb-3">新增比赛</h5>
+    <div class="row g-2">
+        <div class="col-md-2"><input class="form-control" id="league" placeholder="联赛，例如：英超"></div>
+        <div class="col-md-3"><input class="form-control" id="teams" placeholder="主队 VS 客队"></div>
+        <div class="col-md-2"><input class="form-control" id="time" placeholder="时间，例如：06-09 20:00"></div>
+        <div class="col-md-4"><input class="form-control" id="streamUrl" placeholder="临时直播源（FLV / HLS）"></div>
+        <div class="col-md-1"><button class="btn btn-success w-100" onclick="add()">新增</button></div>
+    </div>
+</div>
+
+<div class="card main-card p-3">
+    <h5 class="mb-3">比赛列表</h5>
+    <div id="list"></div>
+</div>
+
+</div>
+
+<div class="modal fade" id="streamModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">更新直播源</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="modalId">
+        <div class="mb-2 small-text" id="modalMatchName"></div>
+        <label class="form-label">直播源地址</label>
+        <textarea class="form-control mb-3" id="modalStreamUrl" rows="4" placeholder="填写 FLV / HLS 源地址"></textarea>
+        <div class="alert alert-info mt-3 mb-0">二维码绑定播放页key，换源无需重新生成二维码。</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        <button class="btn btn-primary" onclick="saveStream()">保存</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="js/common.js"></script>
+
+<script>
+var allMatches = [];
+var streamModal = null;
+
+function getQrUrl(m){
+    if(!m) return '';
+    return m.qr || m.qrcodeUrl || m.qrcode_url || '';
+}
+
+function load(){
+    DH_API.getJson('/admin/matches?t=' + Date.now())
+    .then(function(data){
+        allMatches = data || [];
+        render();
+    })
+    .catch(function(e){
+        dhAlert('加载失败：' + e.message, 'error');
+    });
+}
+
+function render(){
+    var html = '';
+    allMatches.forEach(function(m){
+        var playUrl = m.playUrl || ('https://live.5q.lol/play.html?key=' + (m.streamKey || ('live_' + m.id)));
+        var hasStream = !!m.streamUrl;
+        var hasQr = !!getQrUrl(m);
+        var teamLabel = (m.home || '') + ' VS ' + (m.away || '');
+        var shortUrl = (m.streamUrl || '').length > 50 ? (m.streamUrl || '').substring(0,50) + '...' : (m.streamUrl || '未配置');
+
+        html +=
+        '<div class="card match-card p-3 mb-2">' +
+            '<div class="row g-3 align-items-center">' +
+                '<div class="col-md-3">' +
+                    '<b>#' + m.id + '</b> ' +
+                    '<div class="fw-bold">' + escapeHtml(teamLabel) + '</div>' +
+                    '<div class="small-text">' + escapeHtml(m.league || '赛事') + ' | ' + escapeHtml(m.time || '待定') + '</div>' +
+                '</div>' +
+                '<div class="col-md-4">' +
+                    '<div class="muted-box p-2">' +
+                        '<small class="text-muted">直播源</small> ' +
+                        '<small class="' + (hasStream?'text-success':'text-muted') + '">' + (hasStream?'已配置':'未配置') + '</small>' +
+                        '<div class="small-text text-truncate" title="' + escapeHtml(m.streamUrl || '') + '">' + escapeHtml(shortUrl) + '</div>' +
+                    '</div>' +
+                    '<div class="small-text text-muted mt-1">' + escapeHtml(playUrl) + '</div>' +
+                '</div>' +
+                '<div class="col-md-2 text-center">' +
+                    (hasQr
+                        ? '<img class="qr-img" src="' + escapeHtml(getQrUrl(m)) + '?v=' + Date.now() + '" style="max-width:100%;max-height:72px;border-radius:8px;" onerror="this.style.display=\'none\'">'
+                        : '<div class="text-muted small">暂无二维码</div>') +
+                '</div>' +
+                '<div class="col-md-3">' +
+                    '<div class="d-flex flex-wrap gap-1">' +
+                        '<button class="btn btn-primary btn-sm" onclick="openStreamModal(' + m.id + ')">更新直播源</button>' +
+                        '<button class="btn btn-success btn-sm" onclick="generateQr(' + m.id + ')">生成二维码</button>' +
+                        '<button class="btn btn-outline-primary btn-sm" onclick="viewQr(' + m.id + ')">查看</button>' +
+                        '<button class="btn btn-outline-dark btn-sm" onclick="copyPlayUrl(' + m.id + ')">复制链接</button>' +
+                        '<button class="btn btn-danger btn-sm" onclick="del(' + m.id + ')">删除</button>' +
+                    '</div>' +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    });
+    if(!html) html = '<div class="text-center text-muted p-4">暂无比赛</div>';
+    document.getElementById('list').innerHTML = html;
+}
+
+function add(){
+    var leagueVal = val('league');
+    var teamsVal = val('teams');
+    if(!leagueVal || !teamsVal){
+        dhAlert('联赛和主队VS客队不能为空', 'warn');
+        return;
+    }
+    var parts = teamsVal.split(/\s+VS\s+/i);
+    var home = parts[0] ? parts[0].trim() : '';
+    var away = parts[1] ? parts[1].trim() : '';
+    if(!home || !away){
+        dhAlert('请输入"主队 VS 客队"格式', 'warn');
+        return;
+    }
+    DH_API.postJson('/admin/matches', {
+        league: leagueVal, home: home, away: away,
+        time: val('time'), status: 'WAITING',
+        streamUrl: val('streamUrl'), streamType: 'auto',
+        showInWechat: 1, keywords: '', qr: ''
+    })
+    .then(function(){
+        setVal('league',''); setVal('teams',''); setVal('time',''); setVal('streamUrl','');
+        load();
+    })
+    .catch(function(e){ dhAlert(e.message, 'error'); });
+}
+
+function matchById(id){
+    return allMatches.find(function(x){ return Number(x.id) === Number(id); });
+}
+
+function openStreamModal(id){
+    if(!DH_API.checkId(id)) return;
+    var m = matchById(id);
+    if(!m){ dhAlert('比赛不存在', 'error'); return; }
+    document.getElementById('modalId').value = id;
+    document.getElementById('modalMatchName').innerText = '#' + id + ' ' + (m.home || '') + ' VS ' + (m.away || '');
+    setVal('modalStreamUrl', m.streamUrl || '');
+    if(!streamModal) streamModal = new bootstrap.Modal(document.getElementById('streamModal'));
+    streamModal.show();
+}
+
+function saveStream(){
+    var id = val('modalId');
+    if(!id) return;
+    DH_API.putJson('/admin/matches/' + id + '/stream', {
+        streamUrl: val('modalStreamUrl'), streamType: 'auto',
+        status: 'AVAILABLE', showInWechat: 1
+    })
+    .then(function(){ if(streamModal) streamModal.hide(); load(); })
+    .catch(function(e){ dhAlert(e.message, 'error'); });
+}
+
+function generateQr(id){
+    if(!DH_API.checkId(id)) return;
+    if(!dhConfirm('确定生成/刷新二维码吗？')) return;
+    DH_API.postForm('/admin/matches/' + id + '/qr', '')
+    .then(function(t){
+        if(t.indexOf('ok|') === 0){
+            var url = t.split('|')[1] || '';
+            var m = matchById(id);
+            if(m && url){ m.qr = url; m.qrcodeUrl = url; m.qrcode_url = url; }
+            dhAlert('二维码已生成', 'success'); load();
+        }else{ dhAlert('结果：' + t); load(); }
+    })
+    .catch(function(e){ dhAlert('失败：' + e.message, 'error'); });
+}
+
+function viewQr(id){
+    if(!DH_API.checkId(id)) return;
+    var m = matchById(id);
+    if(!m || !getQrUrl(m)){ dhAlert('暂无二维码', 'warn'); return; }
+    window.open(getQrUrl(m) + '?v=' + Date.now(), '_blank');
+}
+
+function copyPlayUrl(id){
+    if(!DH_API.checkId(id)) return;
+    var m = matchById(id);
+    if(!m) return;
+    var url = m.playUrl || ('https://live.5q.lol/play.html?key=' + (m.streamKey || ('live_' + id)));
+    if(navigator.clipboard){ navigator.clipboard.writeText(url).then(function(){ dhAlert('已复制', 'success'); }); }
+    else { prompt('复制链接', url); }
+}
+
+function del(id){
+    if(!DH_API.checkId(id)) return;
+    var m = matchById(id);
+    var name = m ? (m.home + ' vs ' + m.away) : ('ID=' + id);
+    if(!dhConfirm('确定删除 ' + name + ' 吗？')) return;
+    DH_API.del('/admin/matches/' + id)
+    .then(function(){ load(); })
+    .catch(function(e){ dhAlert(e.message, 'error'); });
+}
+
+load();
+</script>
+
+</body>
+</html>

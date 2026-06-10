@@ -1,0 +1,149 @@
+/* ============================================
+   顶红体育后台 — 公共样式
+   ============================================ */
+
+/* 基础布局 */
+body {
+  background: #f5f6f8;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+}
+
+/* 页面标题 */
+.page-title {
+  font-weight: 800;
+}
+
+/* 卡片样式 */
+.main-card,
+.stat-card,
+.match-card {
+  border: 0;
+  border-radius: 16px;
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .06);
+}
+
+.match-card {
+  margin-bottom: 14px;
+}
+
+/* 辅助文字 */
+.small-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.code-text {
+  font-size: 12px;
+  word-break: break-all;
+  color: #555;
+}
+
+.muted-box {
+  background: #f8f9fa;
+  border: 1px solid #ececec;
+  border-radius: 12px;
+  padding: 10px;
+}
+
+/* Loading 遮罩 */
+#loadingBox {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, .55);
+  z-index: 9999;
+}
+
+#loadingBox > div {
+  background: white;
+  width: 420px;
+  max-width: 90vw;
+  margin: 180px auto;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+#loadingBox h4 {
+  font-weight: 800;
+}
+
+#loadingBox p {
+  font-size: 14px;
+}
+
+/* Toast 提示框 */
+#dhToastBox {
+  position: fixed;
+  top: 22px;
+  right: 22px;
+  z-index: 99999;
+  width: 360px;
+  max-width: calc(100vw - 44px);
+  pointer-events: none;
+}
+
+.dh-toast {
+  background: #111827;
+  color: #fff;
+  border-radius: 10px;
+  padding: 13px 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  font-size: 14px;
+  line-height: 1.6;
+  pointer-events: auto;
+  word-break: break-word;
+  opacity: 1;
+  transform: translateY(0);
+  transition: all .25s ease;
+}
+
+.dh-toast.toast-success {
+  background: #065f46;
+}
+
+.dh-toast.toast-warn {
+  background: #92400e;
+}
+
+.dh-toast.toast-error {
+  background: #991b1b;
+}
+
+/* 二维码图片 */
+.qr-img {
+  width: 92px;
+  height: 92px;
+  object-fit: cover;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background: #fff;
+}
+
+/* 状态徽章 */
+.status-badge {
+  font-size: 13px;
+}
+
+/* 操作按钮行 */
+.action-row button {
+  margin: 3px 4px 3px 0;
+}
+
+/* 直播源文本截断 */
+.stream-text {
+  max-width: 520px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-text {
+  font-size: 12px;
+  color: #555;
+  word-break: break-all;
+}
