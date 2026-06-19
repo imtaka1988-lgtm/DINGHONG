@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>HO体育直播</title>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    html, body {
+      width:100%;
+      min-height:100%;
+      background:#070707;
+      color:#fff;
+      font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",Arial,sans-serif;
+    }
+
+    .page {
+      max-width:580px;
+      margin:0 auto;
+      min-height:100vh;
+      background:linear-gradient(180deg,#171717 0%,#050505 42%,#101010 100%);
+      padding-bottom:78px;
+    }
+
+    .top-space {
+      padding:12px 12px 0;
+    }
+
+    .ad-card {
+      width:100%;
+      border-radius:16px;
+      overflow:hidden;
+      background:linear-gradient(135deg,#2b2111,#0f0f0f 58%,#211306);
+      border:1px solid rgba(245,197,24,.32);
+      box-shadow:0 8px 28px rgba(0,0,0,.45);
+      margin-bottom:12px;
+      position:relative;
+    }
+
+    .ad-card img {
+      width:100%;
+      display:block;
+      height:auto;
+    }
+
+    .ad-placeholder {
+      min-height:92px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex-direction:column;
+      text-align:center;
+      padding:18px 12px;
+      color:#f5c518;
+      letter-spacing:1px;
+    }
+
+    .ad-placeholder .main {
+      font-size:20px;
+      font-weight:800;
+      text-shadow:0 0 12px rgba(245,197,24,.35);
+    }
+
+    .ad-placeholder .sub {
+      margin-top:7px;
+      font-size:12px;
+      color:#d9c27a;
+      opacity:.88;
+    }
+
+    .brand-bar {
+      margin:0 12px 12px;
+      padding:12px 14px;
+      border-radius:14px;
+      background:rgba(255,255,255,.055);
+      border:1px solid rgba(255,255,255,.08);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+    }
+
+    .brand-title {
+      font-size:16px;
+      font-weight:800;
+      color:#f5f1e8;
+    }
+
+    .brand-tag {
+      font-size:12px;
+      color:#f5c518;
+      border:1px solid rgba(245,197,24,.42);
+      border-radius:999px;
+      padding:4px 9px;
+      background:rgba(245,197,24,.08);
+    }
+
+    .match-title {
+      margin:0 12px;
+      padding:11px 12px;
+      text-align:center;
+      background:#0b0b0b;
+      border-radius:14px 14px 0 0;
+      border:1px solid rgba(255,255,255,.08);
+      border-bottom:0;
+      color:#f5f1e8;
+      font-weight:700;
+      letter-spacing:.5px;
+      min-height:42px;
+    }
+
+    .video-wrap {
+      margin:0 12px;
+      background:#000;
+      border-radius:0 0 14px 14px;
+      overflow:hidden;
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 10px 30px rgba(0,0,0,.6);
+    }
+
+    video {
+      width:100%;
+      height:auto;
+      display:block;
+      background:#000;
+    }
+
+    .hidden { display:none !important; }
+
+    .tip {
+      width:100%;
+      min-height:260px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      background:radial-gradient(ellipse at center,#222 0%,#000 75%);
+      text-align:center;
+      padding:30px 20px;
+    }
+
+    .tip-main {
+      font-size:clamp(26px,6vw,44px);
+      font-weight:800;
+      letter-spacing:4px;
+      color:#f5f1e8;
+      text-shadow:0 2px 12px rgba(0,0,0,.6);
+      display:flex;
+      align-items:baseline;
+    }
+
+    .tip-main .dots span {
+      display:inline-block;
+      animation:blink 1.4s infinite both;
+    }
+
+    .tip-main .dots span:nth-child(2){ animation-delay:.2s; }
+    .tip-main .dots span:nth-child(3){ animation-delay:.4s; }
+
+    @keyframes blink {
+      0%,80%,100%{opacity:.2;transform:translateY(0);}
+      40%{opacity:1;transform:translateY(-6px);}
+    }
+
+    .tip-sub {
+      margin-top:16px;
+      font-size:14px;
+      letter-spacing:1px;
+      color:#9a9a9a;
+      line-height:1.7;
+    }
+
+    .gold-copy {
+      margin:12px;
+      padding:14px 12px;
+      border-radius:14px;
+      text-align:center;
+      color:#f5c518;
+      font-size:15px;
+      font-weight:900;
+      letter-spacing:1px;
+      background:linear-gradient(135deg,rgba(245,197,24,.16),rgba(255,255,255,.04),rgba(245,197,24,.10));
+      border:1px solid rgba(245,197,24,.35);
+      text-shadow:0 0 8px rgba(245,197,24,.55);
+      box-shadow:0 8px 24px rgba(0,0,0,.35);
+    }
+
+    .section-title {
+      margin:16px 12px 8px;
+      font-size:13px;
+      color:#aaa;
+      display:flex;
+      align-items:center;
+      gap:8px;
+    }
+
+    .section-title:before {
+      content:"";
+      width:4px;
+      height:14px;
+      border-radius:9px;
+      background:#f5c518;
+      display:block;
+    }
+
+    .ad-grid {
+      padding:0 12px;
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+
+    .info-panel {
+      margin:12px;
+      padding:14px;
+      border-radius:16px;
+      background:rgba(255,255,255,.055);
+      border:1px solid rgba(255,255,255,.08);
+      color:#ddd;
+      line-height:1.8;
+      font-size:13px;
+    }
+
+    .info-panel b {
+      color:#f5c518;
+    }
+
+    .bottom-fixed {
+      position:fixed;
+      left:50%;
+      bottom:0;
+      transform:translateX(-50%);
+      width:100%;
+      max-width:580px;
+      background:rgba(5,5,5,.94);
+      backdrop-filter:blur(12px);
+      border-top:1px solid rgba(245,197,24,.28);
+      padding:9px 12px;
+      display:flex;
+      gap:10px;
+      z-index:50;
+    }
+
+    .bottom-fixed button {
+      flex:1;
+      border:0;
+      border-radius:999px;
+      padding:11px 8px;
+      font-weight:800;
+      font-size:14px;
+    }
+
+    .btn-gold {
+      background:linear-gradient(135deg,#f5c518,#b8860b);
+      color:#111;
+    }
+
+    .btn-dark {
+      background:#222;
+      color:#eee;
+      border:1px solid rgba(255,255,255,.12) !important;
+    }
+
+    .banner-dynamic {
+      padding:0 12px;
+      margin-top:12px;
+    }
+
+    .banner-dynamic img {
+      width:100%;
+      border-radius:16px;
+      display:block;
+      border:1px solid rgba(255,255,255,.08);
+    }
+  </style>
+</head>
+
+<body>
+<div class="page">
+
+  <div class="top-space">
+    <div class="ad-card">
+      <img src="img/top.png" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="ad-placeholder" style="display:none;">
+        <div class="main">顶部广告位</div>
+        <div class="sub">建议尺寸：750 × 220，可放品牌图 / 活动图 / 扫码引导</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="brand-bar">
+    <div class="brand-title">HO体育直播</div>
+    <div class="brand-tag">高清赛事入口</div>
+  </div>
+
+  <div id="matchTitle" class="match-title">直播加载中</div>
+
+  <div class="video-wrap">
+    <video id="video" class="hidden" controls autoplay playsinline muted></video>
+
+    <div id="tip" class="tip">
+      <div class="tip-main">HO体育直播<span class="dots"><span>.</span><span>.</span><span>.</span></span></div>
+      <div id="tipSub" class="tip-sub">正在加载，请稍候</div>
+    </div>
+  </div>
+
+  <div class="gold-copy">
+    首单不中全额返，福利注册后扫下方二维码联系专员
+  </div>
+
+  <div class="section-title">推荐信息</div>
+
+  <div class="ad-grid">
+    <div class="ad-card">
+      <img src="img/ad1.png" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="ad-placeholder" style="display:none;">
+        <div class="main">中部广告位 1</div>
+        <div class="sub">建议尺寸：750 × 260，可放活动图 / 专员二维码 / 品牌宣传</div>
+      </div>
+    </div>
+
+    <div class="ad-card">
+      <img src="img/ad2.png" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="ad-placeholder" style="display:none;">
+        <div class="main">中部广告位 2</div>
+        <div class="sub">建议尺寸：750 × 260，可放备用线路 / 关注提示 / 会员说明</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="bottomBanner" class="banner-dynamic"></div>
+
+  <div class="section-title">观赛提示</div>
+
+  <div class="info-panel">
+    <b>提示：</b>如果直播暂未加载，请等待几秒或点击底部“刷新直播”。<br>
+    <b>说明：</b>本页面会根据二维码自动识别比赛，不同二维码进入不同直播间。<br>
+    <b>线路：</b>如直播源临时更新，二维码无需更换，页面会自动读取最新线路。
+  </div>
+
+  <div class="ad-grid">
+    <div class="ad-card">
+      <img src="img/bottom.png" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+      <div class="ad-placeholder" style="display:none;">
+        <div class="main">底部广告位</div>
+        <div class="sub">建议尺寸：750 × 300，可放专员二维码 / 长图海报 / 联系方式</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="bottom-fixed">
+  <button class="btn-dark" onclick="checkStatus()">刷新直播</button>
+  <button class="btn-gold" onclick="scrollToAd()">联系专员</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/mpegts.js@latest"></script>
+
+<script>
+  var key = (location.search.match(/key=([a-z0-9_\-]+)/i) || [])[1] || '';
+  var API = 'https://api.5q.lol/live/status?key=';
+
+  var video = document.getElementById('video');
+  var tip = document.getElementById('tip');
+  var tipSub = document.getElementById('tipSub');
+  var matchTitle = document.getElementById('matchTitle');
+
+  var player = null;
+  var hls = null;
+  var currentUrl = '';
+  var playing = false;
+
+  function setTip(msg) {
+    tip.classList.remove('hidden');
+    video.classList.add('hidden');
+    tipSub.innerHTML = msg || '正在加载，请稍候';
+  }
+
+  function destroyPlayers() {
+    if (player) {
+      try { player.unload(); player.detachMediaElement(); player.destroy(); } catch(e) {}
+      player = null;
+    }
+    if (hls) {
+      try { hls.destroy(); } catch(e) {}
+      hls = null;
+    }
+    try {
+      video.pause();
+      video.removeAttribute('src');
+      video.load();
+    } catch(e) {}
+    playing = false;
+  }
+
+  function startPlay(streamUrl, streamType) {
+    if (!streamUrl) {
+      destroyPlayers();
+      setTip('直播源暂未配置');
+      return;
+    }
+
+    if (playing && currentUrl === streamUrl) return;
+
+    destroyPlayers();
+    currentUrl = streamUrl;
+
+    tip.classList.add('hidden');
+    video.classList.remove('hidden');
+
+    var type = (streamType || '').toLowerCase();
+    if (!type || type === 'auto') {
+      if (streamUrl.indexOf('.m3u8') > -1) type = 'hls';
+      else type = 'flv';
+    }
+
+    if (type === 'hls') {
+      if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        video.src = streamUrl;
+        video.play().catch(function(){});
+        playing = true;
+        return;
+      }
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls();
+        hls.loadSource(streamUrl);
+        hls.attachMedia(video);
+        hls.on(Hls.Events.MANIFEST_PARSED, function(){
+          video.play().catch(function(){});
+        });
+        playing = true;
+        return;
+      }
+      setTip('当前浏览器暂不支持该直播源');
+      return;
+    }
+
+    if (window.mpegts && mpegts.getFeatureList().mseLivePlayback) {
+      player = mpegts.createPlayer({
+        type: 'flv',
+        isLive: true,
+        url: streamUrl
+      });
+      player.attachMediaElement(video);
+      player.load();
+      video.play().catch(function(){});
+      playing = true;
+      return;
+    }
+
+    setTip('当前浏览器暂不支持FLV直播播放');
+  }
+
+  function checkStatus() {
+    if (!key) {
+      matchTitle.innerText = '直播参数缺失';
+      setTip('缺少直播参数');
+      return;
+    }
+
+    fetch(API + encodeURIComponent(key) + '&t=' + Date.now())
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        if (d.title) {
+          matchTitle.innerText = d.title;
+        }
+
+        if (d.online && d.streamUrl) {
+          startPlay(d.streamUrl, d.streamType || 'auto');
+        } else {
+          destroyPlayers();
+          setTip(d.message || '本场直播暂不可用');
+        }
+      })
+      .catch(function(){
+        destroyPlayers();
+        setTip('直播状态获取失败，请稍后重试');
+      });
+  }
+
+  var currentBanner = '';
+
+  function checkBanner(){
+    fetch('banner.txt?t=' + Date.now())
+      .then(function(r){ return r.text(); })
+      .then(function(u){
+        u = u.trim();
+        if (u !== currentBanner){
+          currentBanner = u;
+          var box = document.getElementById('bottomBanner');
+          if (u){
+            box.innerHTML = '<div class="section-title">动态推荐</div><img src="' + u + '?v=' + Date.now() + '">';
+          } else {
+            box.innerHTML = '';
+          }
+        }
+      })
+      .catch(function(){});
+  }
+
+  function scrollToAd(){
+    var el = document.querySelector('.gold-copy');
+    if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+  }
+
+  checkBanner();
+  setInterval(checkBanner, 15000);
+
+  checkStatus();
+  setInterval(checkStatus, 15000);
+</script>
+
+<!-- 在线客服 -->
+<script>
+  (function(d, w, c) {
+    if (w[c]) return;
+    var s = d.createElement("script");
+    w[c] = function() {
+      (w[c].z = w[c].z || []).push(arguments);
+    };
+    s.async = true;
+    s.src = "https://static.ahc.ink/hecong.js";
+    if (d.head) d.head.appendChild(s);
+  })(document, window, "_AIHECONG");
+  _AIHECONG("ini", { channelId: "Xhn4S8" });
+</script>
+
+</body>
+</html>

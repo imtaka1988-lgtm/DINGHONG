@@ -6,36 +6,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", Arial, sans-serif; background:#f5f5f5; margin:0; padding:20px; }
-.card { background:#fff; border-radius:12px; padding:20px; max-width:500px; margin:120px auto; box-shadow:0 2px 10px rgba(0,0,0,.08); text-align:center; }
-h2 { text-align:center; margin-bottom:12px; }
-.loading { color:#999; font-size:14px; margin-top:20px; }
+.card { background:#fff; border-radius:12px; padding:24px; max-width:500px; margin:120px auto; box-shadow:0 2px 10px rgba(0,0,0,.08); text-align:center; }
+h2 { text-align:center; margin-bottom:12px; color:#1a1a1a; }
+p { margin:8px 0; color:#666; font-size:14px; }
+.btn { display:inline-block; margin-top:16px; padding:10px 24px; background:#f5c518; color:#111; font-weight:700; border:none; border-radius:999px; text-decoration:none; font-size:14px; cursor:pointer; }
+.btn:hover { background:#e0b010; }
 </style>
 </head>
 <body>
 <div class="card">
 <h2>顶红体育直播入口</h2>
-<p>正在获取最新赛事直播...</p>
-<div class="loading">
-<noscript>请启用 JavaScript 以查看直播。</noscript>
+<noscript>
+  <p style="color:#e74c3c;">请启用 JavaScript 以查看直播。</p>
+</noscript>
+<div id="content">
+  <p>正在获取直播信息...</p>
 </div>
 </div>
 
 <script>
-// 从公众号菜单进入时，微信会携带 query 参数跳转至此页面
-// 这里做一个简单的跳转引导
 (function(){
     var key = (location.search.match(/key=([a-z0-9_\-]+)/i) || [])[1];
-    if(key){
+
+    if (key) {
+        // 有 key，直接跳转到播放页
         location.replace('play.html?key=' + encodeURIComponent(key));
-    } else {
-        // 无 key 参数时提示用户从公众号菜单进入
-        var card = document.querySelector('.card');
-        if(card){
-            card.innerHTML = '<h2>顶红体育直播入口</h2>' +
-                '<p style="color:#e74c3c;margin-top:16px;">请从顶红体育公众号菜单进入观看直播。</p>' +
-                '<p style="color:#999;font-size:14px;">如果您已在微信中打开本链接但仍看到此提示，请尝试重新关注公众号后重试。</p>';
-        }
+        return;
     }
+
+    // 无 key，提示从公众号菜单进入
+    document.getElementById('content').innerHTML =
+        '<p style="color:#e74c3c;margin-top:16px;">请从顶红体育公众号菜单进入观看直播。</p>' +
+        '<p style="color:#999;font-size:13px;">如果您已在微信中打开本链接但仍看到此提示，请尝试重新关注公众号后重试。</p>';
 })();
 </script>
 </body>

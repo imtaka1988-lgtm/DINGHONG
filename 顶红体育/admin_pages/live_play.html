@@ -476,7 +476,8 @@
 
 <script>
   var key = (location.search.match(/key=([a-z0-9_\-]+)/i) || [])[1] || '';
-  var API = 'https://api.5q.lol/live/status?key=';
+  // 自动适配：生产环境用 api.5q.lol，调试环境用当前域名
+  var API = '/live/status?key=';
 
   var video = document.getElementById('video');
   var tipEl = document.getElementById('tip');
@@ -541,7 +542,13 @@
   function getPlayableUrl(streamUrl, streamType) {
     var type = normalizeStreamType(streamUrl, streamType);
     if (type === 'flv') {
-      return '/live/proxy?key=' + encodeURIComponent(key) + '&t=' + Date.now();
+      var auth = window.__dhProxyAuth;
+      if (auth && auth.t && auth.s) {
+        return '/live/proxy?key=' + encodeURIComponent(key) + '&t=' + auth.t + '&s=' + encodeURIComponent(auth.s);
+      }
+      // 无有效签名时，直接返回原始地址让前端自行尝试播放
+      // （HLS / MP4 源不经过代理；FLV 源若有签名会自动走代理）
+      return streamUrl;
     }
     return streamUrl;
   }
@@ -626,40 +633,17 @@
           enableStashBuffer: true,
           stashInitialSize: 384,
           lazyLoad: false,
+          // 保留自动清理但放宽到 120 秒，避免 SourceBuffer 无限增长
           autoCleanupSourceBuffer: true,
-          autoCleanupMaxBackwardDuration: 60,
-          autoCleanupMinBackwardDuration: 30
+          autoCleanupMaxBackwardDuration: 180,
+          autoCleanupMinBackwardDuration: 120
         });
 
-        var stallTimer = null;
-        var stallRecovering = false;
-
-        function clearStallTimer() {
-          if (stallTimer) { clearTimeout(stallTimer); stallTimer = null; }
-        }
-
-        function onStallDetected() {
-          if (stallRecovering) return;
-          stallRecovering = true;
-          clearStallTimer();
-          console.log('[STALL] video stalled, reconnecting...');
-          destroyPlayers();
-          currentUrl = '';
-          setTimeout(function() {
-            stallRecovering = false;
-            checkStatus();
-          }, 800);
-        }
-
-        video.addEventListener('stalled', function() {
-          if (!stallTimer) {
-            stallTimer = setTimeout(onStallDetected, 4000);
-          }
+        // 播放健康监控：记录最后 timeupdate 时间，超过阈值认为卡死
+        var lastTimeUpdate = Date.now();
+        video.addEventListener('timeupdate', function() {
+          lastTimeUpdate = Date.now();
         });
-
-        video.addEventListener('playing', clearStallTimer);
-        video.addEventListener('timeupdate', clearStallTimer);
-        video.addEventListener('progress', clearStallTimer);
 
         if (player.on && mpegts.Events) {
           player.on(mpegts.Events.ERROR, function(errorType, errorDetail, errorInfo) {
@@ -690,6 +674,8 @@
         });
 
         playing = true;
+        // 暴露健康状态供 checkStatus 判断
+        video.__dhLastTimeUpdate = lastTimeUpdate;
         return;
 
       } catch(e) {
@@ -769,12 +755,25 @@
       setTip('直播链接无效，请从公众号菜单重新进入');
       return;
     }
+
+    // 健康检查：如果正在播放但超过 20 秒没有 timeupdate，视为卡死，触发恢复
+    if (playing && video.__dhLastTimeUpdate && (Date.now() - video.__dhLastTimeUpdate > 20000)) {
+      console.log('[HEALTH] no timeupdate for 20s, reconnecting...');
+      destroyPlayers();
+      currentUrl = '';
+    }
+
     if (!playing) setTip('正在获取直播信号，请稍候');
+
     fetch(API + encodeURIComponent(key) + '&t=' + Date.now())
       .then(function(r){ return r.json(); })
       .then(function(d){
         if (d.title) matchTitle.innerText = d.title;
         if (d.online && d.streamUrl) {
+          // 更新代理鉴权参数
+          if (d.proxyAuth) { window.__dhProxyAuth = d.proxyAuth; }
+          // 正在播放且源地址没变：跳过重启，避免画面闪烁
+          if (playing && currentUrl === d.streamUrl) return;
           startPlay(d.streamUrl, d.streamType || 'auto');
         } else {
           destroyPlayers();
@@ -782,8 +781,10 @@
         }
       })
       .catch(function(){
-        destroyPlayers();
-        setTip('直播状态暂时无法获取，请稍后刷新');
+        if (!playing) {
+          destroyPlayers();
+          setTip('直播状态暂时无法获取，请稍后刷新');
+        }
       });
   }
 

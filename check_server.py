@@ -1,42 +1,26 @@
-import paramiko
+import paramiko, warnings
+warnings.filterwarnings('ignore')
 
-ssh = paramiko.SSHClient()
-ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-ssh.connect('8.210.102.206', username='root', password='Taka888.', timeout=10)
+c = paramiko.SSHClient()
+c.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+c.connect('8.210.102.206', 22, 'root', 'Taka888.', timeout=15, look_for_keys=False, allow_agent=False)
 
-# 查看 /data/dinghong 完整目录树
-stdin, stdout, stderr = ssh.exec_command('find /data/dinghong -maxdepth 5 -not -path "*/logs/*" -not -path "*/node_modules/*" -not -path "*/.git/*" | sort')
-out = stdout.read().decode()
-print('=== /data/dinghong 目录树 ===')
-print(out)
+cmds = [
+    ("/root 目录", "ls -la /root/"),
+    ("Docker 容器", "docker ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Image}}\t{{.Ports}}' 2>/dev/null || echo 'no-docker'"),
+    ("docker-compose", "find /root -name 'docker-compose.yml' -type f 2>/dev/null"),
+    ("项目目录", "find /root/dinghong -maxdepth 2 -type d 2>/dev/null || echo 'no dinghong'"),
+]
 
-print('\n=== /data/顶红公众号 目录树 ===')
-stdin, stdout, stderr = ssh.exec_command('find /data/顶红公众号 -maxdepth 5 2>/dev/null | sort')
-out = stdout.read().decode()
-print(out)
+for title, cmd in cmds:
+    print(f"\n=== {title} ===")
+    stdin, stdout, stderr = c.exec_command(cmd)
+    out = stdout.read().decode()
+    err = stderr.read().decode()
+    if out.strip():
+        print(out)
+    if err.strip():
+        print("ERR:", err)
 
-# 查看 /data/dinghong/app 详细
-print('\n=== /data/dinghong/app 详细 ===')
-stdin, stdout, stderr = ssh.exec_command('ls -laR /data/dinghong/app/ 2>/dev/null')
-out = stdout.read().decode()
-print(out)
-
-# 查看 /data/dinghong/nginx
-print('\n=== /data/dinghong/nginx ===')
-stdin, stdout, stderr = ssh.exec_command('ls -la /data/dinghong/nginx/ 2>/dev/null')
-out = stdout.read().decode()
-print(out)
-
-# 查看运行的jar/进程
-print('\n=== Java进程 ===')
-stdin, stdout, stderr = ssh.exec_command('ps aux | grep java | grep -v grep')
-out = stdout.read().decode()
-print(out)
-
-# 查看docker compose或部署方式
-print('\n=== Docker compose查找 ===')
-stdin, stdout, stderr = ssh.exec_command('find / -maxdepth 5 -name "docker-compose*" -o -name "Dockerfile" 2>/dev/null | head -20')
-out = stdout.read().decode()
-print(out)
-
-ssh.close()
+c.close()
+print("\nDone.")

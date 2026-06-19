@@ -1,6 +1,6 @@
 /* ============================================
    顶红体育后台 — 公共 JS 模块
-   包含: Toast通知、API封装、认证守卫、工具函数
+   包含: Toast通知、API封装、JWT认证守卫、工具函数
    ============================================ */
 
 // ==================== Toast 通知系统 ====================
@@ -70,16 +70,54 @@
 })();
 
 
-// ==================== API 封装 ====================
+// ==================== JWT Token 管理 ====================
+
+(function () {
+  window.dhGetToken = function () {
+    return localStorage.getItem('dh_token') || '';
+  };
+
+  window.dhSetToken = function (token) {
+    if (token) {
+      localStorage.setItem('dh_token', token);
+      localStorage.setItem('login', 'ok');
+    }
+  };
+
+  window.dhClearToken = function () {
+    localStorage.removeItem('dh_token');
+    localStorage.removeItem('login');
+  };
+})();
+
+
+// ==================== API 封装（自动注入 JWT Token） ====================
 
 var DH_API = (function () {
+
+  function authHeaders(extraHeaders) {
+    var headers = extraHeaders || {};
+    var token = window.dhGetToken();
+    if (token) {
+      headers['Authorization'] = 'Bearer ' + token;
+    }
+    return headers;
+  }
 
   function fetchText(url, options) {
     options = options || {};
     options.cache = 'no-store';
+    if (!options.headers) options.headers = {};
+    options.headers = authHeaders(options.headers);
 
     return fetch(url, options).then(function (r) {
       return r.text().then(function (t) {
+        if (r.status === 401) {
+          window.dhClearToken();
+          window.dhAlert('登录已过期，请重新登录', 'error');
+          setTimeout(function () { location.href = 'login.html'; }, 1500);
+          throw new Error('未登录或登录已过期');
+        }
         if (!r.ok) {
           throw new Error('接口状态异常：HTTP ' + r.status + '，' + t);
         }
@@ -95,9 +133,16 @@ var DH_API = (function () {
   }
 
   function fetchJson(url) {
-    return fetch(url + '?_=' + Date.now(), { cache: 'no-store' })
+    var headers = authHeaders({});
+    return fetch(url + '?_=' + Date.now(), { cache: 'no-store', headers: headers })
       .then(function (r) {
         return r.text().then(function (t) {
+          if (r.status === 401) {
+            window.dhClearToken();
+            window.dhAlert('登录已过期，请重新登录', 'error');
+            setTimeout(function () { location.href = 'login.html'; }, 1500);
+            throw new Error('未登录或登录已过期');
+          }
           if (!r.ok) {
             throw new Error('接口异常：HTTP ' + r.status);
           }
@@ -150,7 +195,7 @@ var DH_API = (function () {
 })();
 
 
-// ==================== 认证守卫 ====================
+// ==================== 认证守卫（后台页面） ====================
 
 (function () {
   var pageName = (location.pathname.split('/').pop() || '').toLowerCase();
@@ -166,7 +211,7 @@ var DH_API = (function () {
 // ==================== 通用登出 ====================
 
 window.dhLogout = function () {
-  localStorage.removeItem('login');
+  window.dhClearToken();
   location.href = 'login.html';
 };
 

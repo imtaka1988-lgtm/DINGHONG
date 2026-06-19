@@ -4,12 +4,15 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.sql.DataSource;
 import java.io.*;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import java.util.HexFormat;
 
 @RestController
 @RequestMapping("/live")
@@ -17,13 +20,33 @@ import java.sql.*;
 public class LiveProxyController {
 
     private final DataSource dataSource;
+    // 代理签名密钥，生产环境应通过环境变量注入
+    private static final String PROXY_SECRET = "dinghong-proxy-secret-2026";
 
     public LiveProxyController(DataSource dataSource) {
         this.dataSource = dataSource;
     }
 
     @GetMapping("/proxy")
-    public ResponseEntity<StreamingResponseBody> proxy(@RequestParam String key) {
+    public ResponseEntity<StreamingResponseBody> proxy(@RequestParam String key,
+                                                        @RequestParam(required = false) Long t,
+                                                        @RequestParam(required = false) String s) {
+        // 时效性校验：请求必须在5分钟内
+        if (t == null || s == null) {
+            return text(403, "proxy denied: missing auth params");
+        }
+
+        long now = System.currentTimeMillis() / 1000;
+        if (Math.abs(now - t) > 300) {
+            return text(403, "proxy denied: token expired");
+        }
+
+        // HMAC 签名校验
+        String expectedSig = hmacSha256(key + "|" + t, PROXY_SECRET);
+        if (!expectedSig.equals(s)) {
+            return text(403, "proxy denied: invalid signature");
+        }
+
         try {
             LiveTarget target = findTarget(key);
 
@@ -43,7 +66,6 @@ public class LiveProxyController {
                     conn.setReadTimeout(30000);
                     conn.setInstanceFollowRedirects(true);
 
-                    // 不带浏览器 Origin / Referer，避免源站按网页请求拒绝
                     conn.setRequestProperty("User-Agent", "VLC/3.0.20 LibVLC/3.0.20");
                     conn.setRequestProperty("Accept", "*/*");
                     conn.setRequestProperty("Connection", "keep-alive");
@@ -117,9 +139,7 @@ public class LiveProxyController {
 
     private boolean isOfflineStatus(String status) {
         if (status == null) return false;
-
         String s = status.trim().toUpperCase();
-
         return s.equals("FINISHED")
                 || s.equals("OFFLINE")
                 || s.equals("ENDED")
@@ -127,6 +147,18 @@ public class LiveProxyController {
                 || s.equals("DELETE")
                 || s.equals("DELETED")
                 || s.equals("NO_RIGHTS");
+    }
+
+    private String hmacSha256(String data, String key) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec spec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(spec);
+            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("HMAC error", e);
+        }
     }
 
     private ResponseEntity<StreamingResponseBody> text(int status, String message) {

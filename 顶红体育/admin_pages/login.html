@@ -14,10 +14,6 @@
 
 <h3 class="mb-4 text-center">顶红体育后台</h3>
 
-<div class="alert alert-warning small">
-  请尽快迁移至后端 JWT Token 认证（详见 optimization-report.md）。
-</div>
-
 <form id="loginForm" onsubmit="return false;">
 <input id="username" class="form-control mb-3" placeholder="账号" autocomplete="username">
 <input id="password" type="password" class="form-control mb-3" placeholder="密码" autocomplete="current-password">
@@ -35,10 +31,28 @@
 <script src="js/common.js"></script>
 <script>
 
-// 已登录直接跳转
-if(localStorage.getItem('login')==='ok'){
-    location.href='matches.html';
-}
+// 检查 token 是否有效
+(function() {
+  var token = localStorage.getItem('dh_token');
+  if (token) {
+    fetch('/admin/check-auth', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.success) {
+        location.href = 'matches.html';
+      } else {
+        localStorage.removeItem('dh_token');
+        localStorage.removeItem('login');
+      }
+    })
+    .catch(function() {
+      localStorage.removeItem('dh_token');
+      localStorage.removeItem('login');
+    });
+  }
+})();
 
 var loginLocked = false;
 
@@ -55,25 +69,49 @@ function login(){
         return;
     }
 
-    // 当前过渡阶段：仍然用前端比对，请尽快替换为后端 API 认证
-    if(u==='admin' && p==='DingHong2026'){
-        errBox.style.display = 'none';
-        localStorage.setItem('login','ok');
-        location.href='matches.html';
-    }else{
+    var btn = document.getElementById('loginBtn');
+    btn.disabled = true;
+    btn.innerText = '登录中...';
+    errBox.style.display = 'none';
+
+    fetch('/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'username=' + encodeURIComponent(u) + '&password=' + encodeURIComponent(p)
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            localStorage.setItem('dh_token', data.token);
+            localStorage.setItem('login', 'ok');
+            location.href = 'matches.html';
+        } else {
+            loginLocked = true;
+            btn.disabled = true;
+            btn.innerText = '请稍后重试...';
+            errBox.style.display = 'block';
+            errBox.innerText = data.message || '账号或密码错误，3秒后可重试';
+
+            setTimeout(function(){
+                loginLocked = false;
+                btn.disabled = false;
+                btn.innerText = '登录';
+            }, 3000);
+        }
+    })
+    .catch(function(e) {
         loginLocked = true;
-        var btn = document.getElementById('loginBtn');
         btn.disabled = true;
         btn.innerText = '请稍后重试...';
         errBox.style.display = 'block';
-        errBox.innerText = '账号或密码错误，3秒后可重试';
+        errBox.innerText = '网络错误，无法连接服务器';
 
         setTimeout(function(){
             loginLocked = false;
             btn.disabled = false;
             btn.innerText = '登录';
         }, 3000);
-    }
+    });
 }
 
 // 回车键登录

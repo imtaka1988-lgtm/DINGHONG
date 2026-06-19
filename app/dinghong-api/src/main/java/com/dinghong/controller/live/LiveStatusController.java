@@ -2,7 +2,10 @@ package com.dinghong.controller.live;
 
 import org.springframework.web.bind.annotation.*;
 
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import javax.sql.DataSource;
+import java.nio.charset.StandardCharsets;
 import java.sql.*;
 import java.util.*;
 
@@ -69,6 +72,17 @@ public class LiveStatusController {
             if (online) {
                 result.put("streamUrl", streamUrl);
                 result.put("message", "直播已开放，正在为你加载");
+                // 仅为 FLV 代理生成时效性签名（HLS/auto 直接播放，不走代理）
+                String actualType = inferType(streamType, streamUrl);
+                if ("flv".equals(actualType)) {
+                    long timestamp = System.currentTimeMillis() / 1000;
+                    String sig = hmacSha256(key.trim() + "|" + timestamp, "dinghong-proxy-secret-2026");
+                    Map<String, Object> proxyAuth = new LinkedHashMap<>();
+                    proxyAuth.put("t", timestamp);
+                    proxyAuth.put("s", sig);
+                    result.put("proxyAuth", proxyAuth);
+                }
+                result.put("streamType", actualType);
             } else {
                 result.put("message", userMessage(status, streamUrl, show));
             }
@@ -118,7 +132,8 @@ public class LiveStatusController {
         if (u.contains(".m3u8")) return "hls";
         if (u.contains(".flv")) return "flv";
 
-        return "flv";
+        // 无法从 URL 推断类型时返回 "auto"，由前端自行适配
+        return "auto";
     }
 
     private String buildTitle(String home, String away, String league) {
@@ -129,6 +144,18 @@ public class LiveStatusController {
         if (!empty(away)) return away;
         if (!empty(league)) return league;
         return "顶红体育直播";
+    }
+
+    private String hmacSha256(String data, String key) {
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            SecretKeySpec spec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+            mac.init(spec);
+            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("HMAC error", e);
+        }
     }
 
     private boolean empty(String s) {
