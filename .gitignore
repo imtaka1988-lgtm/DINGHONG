@@ -1,0 +1,43 @@
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# local secrets
+.env
+*.env
+env.sh
+server_info.txt
+*secret*
+*token*
+*.pem
+*.key
+
+# Java / Maven build outputs
+app/dinghong-api/target/
+target/
+build/
+dist/
+*.class
+*.jar
+
+# runtime uploads / generated files
+upload/
+cover/
+article_images/
+mysql/data/
+
+# logs / caches
+*.log
+__pycache__/
+*.pyc
+
+# local helper scripts with server credentials
+*_deploy.py
+deploy_*.py
+check_*.py
+fix_*.py
+force_deploy.py
+redeploy.py
+ssh_connect.py
+sync_*.py

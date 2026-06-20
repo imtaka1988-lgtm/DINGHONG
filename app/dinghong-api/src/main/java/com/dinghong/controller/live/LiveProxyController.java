@@ -1,5 +1,6 @@
 package com.dinghong.controller.live;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
@@ -20,11 +21,15 @@ import java.util.HexFormat;
 public class LiveProxyController {
 
     private final DataSource dataSource;
-    // 代理签名密钥，生产环境应通过环境变量注入
-    private static final String PROXY_SECRET = "dinghong-proxy-secret-2026";
+    private final String proxySecret;
 
-    public LiveProxyController(DataSource dataSource) {
+    public LiveProxyController(DataSource dataSource,
+                               @Value("${live.proxy.secret:}") String proxySecret) {
+        if (proxySecret == null || proxySecret.trim().length() < 16) {
+            throw new IllegalStateException("Live proxy signing secret must be configured.");
+        }
         this.dataSource = dataSource;
+        this.proxySecret = proxySecret.trim();
     }
 
     @GetMapping("/proxy")
@@ -42,7 +47,7 @@ public class LiveProxyController {
         }
 
         // HMAC 签名校验
-        String expectedSig = hmacSha256(key + "|" + t, PROXY_SECRET);
+        String expectedSig = hmacSha256(key + "|" + t, proxySecret);
         if (!expectedSig.equals(s)) {
             return text(403, "proxy denied: invalid signature");
         }

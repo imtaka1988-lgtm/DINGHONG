@@ -1,21 +1,36 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 spring:
   datasource:
-    url: jdbc:mysql://127.0.0.1:3306/dinghong?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: DingHong@2026
+    url: ${DB_URL:jdbc:mysql://127.0.0.1:3306/dinghong?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai}
+    username: ${DB_USER:dinghong}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
+admin:
+  user: ${ADMIN_USER:}
+  pass: ${ADMIN_PASS:}
+
+jwt:
+  secret: ${JWT_SECRET:}
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}
+
+wechat:
+  verify-token: ${WECHAT_VERIFY_TOKEN:}
+
+live:
+  proxy:
+    secret: ${LIVE_PROXY_SECRET:}
 
 # 顶红体育：The Odds API START
 odds:
   api:
-    enabled: true
-    key: "24b4f41df3efc29a862dffdf3d4f3e0c"
-    regions: "eu,uk,us"
-    markets: "h2h,spreads,totals"
-    oddsFormat: "decimal"
-    footballSports: "soccer_epl,soccer_uefa_champs_league,soccer_japan_j_league,soccer_spain_la_liga,soccer_italy_serie_a,soccer_germany_bundesliga,soccer_france_ligue_one,soccer_uefa_europa_league,soccer_usa_mls,soccer_fifa_world_cup,soccer_fifa_world_cup_winner,soccer_uefa_euro_qualification,soccer_uefa_nations_league,soccer_conmebol_copa_libertadores,soccer_england_efl_championship,soccer_netherlands_eredivisie,soccer_portugal_primeira_liga"
-    basketballSports: "basketball_nba,basketball_wnba,basketball_euroleague,basketball_ncaab,basketball_nbl,basketball_nba_summer_league"
+    enabled: ${ODDS_API_ENABLED:true}
+    key: ${ODDS_API_KEY:}
+    regions: ${ODDS_API_REGIONS:eu,uk,us}
+    markets: ${ODDS_API_MARKETS:h2h,spreads,totals}
+    oddsFormat: ${ODDS_API_ODDS_FORMAT:decimal}
+    footballSports: ${ODDS_API_FOOTBALL_SPORTS:soccer_epl,soccer_uefa_champs_league,soccer_japan_j_league,soccer_spain_la_liga,soccer_italy_serie_a,soccer_germany_bundesliga,soccer_france_ligue_one,soccer_uefa_europa_league,soccer_usa_mls,soccer_fifa_world_cup,soccer_fifa_world_cup_winner,soccer_uefa_euro_qualification,soccer_uefa_nations_league,soccer_conmebol_copa_libertadores,soccer_england_efl_championship,soccer_netherlands_eredivisie,soccer_portugal_primeira_liga}
+    basketballSports: ${ODDS_API_BASKETBALL_SPORTS:basketball_nba,basketball_wnba,basketball_euroleague,basketball_ncaab,basketball_nbl,basketball_nba_summer_league}
 # 顶红体育：The Odds API END
