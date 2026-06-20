@@ -33,7 +33,9 @@ public class ArticleController {
     }
 
     @PostMapping("/generate-review/{id}")
-    public String generateReview(@PathVariable Long id) {
+    public String generateReview(@PathVariable Long id,
+                                 @RequestParam(required = false) String resultInfo,
+                                 @RequestParam(required = false) String finalScore) {
 
         String matchInfo;
         String author;
@@ -55,6 +57,11 @@ public class ArticleController {
 
         if (matchInfo == null || matchInfo.trim().isEmpty()) {
             return "review_blocked:预测文章标题为空，无法提取比赛信息";
+        }
+
+        String manualResult = buildManualResultInfo(resultInfo, finalScore);
+        if (!manualResult.isEmpty()) {
+            matchInfo = matchInfo + "\n" + manualResult;
         }
 
         return generate(matchInfo, author, "REVIEW", id);
@@ -92,7 +99,7 @@ public class ArticleController {
              * 否则会污染百度检索关键词，导致“已结束说未结束 / 百度可查却找不到资料”。
              */
             String content = editorService.writeArticle(author, category, matchInfo, relatedContent);
-String ps = editorPsService.randomPs(author, content);
+            String ps = editorPsService.randomPs(author, content);
             String finalContent = content + ps;
 
             String wechatTitle = wechatMetaService.generateTitle(finalContent);
@@ -348,6 +355,21 @@ String ps = editorPsService.randomPs(author, content);
         if (s.contains("basketball") || s.contains("篮球")) return "basketball";
         if (s.contains("football") || s.contains("soccer") || s.contains("足球")) return "football";
         return "";
+    }
+
+    private String buildManualResultInfo(String resultInfo, String finalScore) {
+        StringBuilder sb = new StringBuilder();
+
+        if (resultInfo != null && !resultInfo.trim().isEmpty()) {
+            sb.append(resultInfo.trim());
+        }
+
+        if (finalScore != null && !finalScore.trim().isEmpty()) {
+            if (sb.length() > 0) sb.append("\n");
+            sb.append("最终比分：").append(finalScore.trim());
+        }
+
+        return sb.toString().trim();
     }
 
     private String getRelatedArticleContent(Long id) {

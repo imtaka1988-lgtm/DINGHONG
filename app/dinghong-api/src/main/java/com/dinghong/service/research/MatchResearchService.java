@@ -98,7 +98,19 @@ public class MatchResearchService {
 
         return cleaned;
     }
+
     public ReviewResearchResult researchReview(String matchInfo) {
+
+        /*
+         * 复盘兜底：后台或请求参数已经人工提供“最终比分/赛果/完场”等明确赛果时，
+         * 不再强制依赖百度搜索。这样可以处理已经结束但搜索源未返回明确结果的历史比赛。
+         * 仍然要求同时出现比分表达，避免没有结果时放开复盘。
+         */
+        if (hasManualResultEvidence(matchInfo)) {
+            String material = buildManualReviewMaterial(matchInfo);
+            System.out.println("[REVIEW_MANUAL_RESULT] 使用人工明确赛果生成复盘资料。match=" + matchInfo);
+            return ReviewResearchResult.passed(matchInfo, material, matchInfo);
+        }
 
         String raw = baiduSearchService.searchMatchInfo(matchInfo, "REVIEW");
 
@@ -472,6 +484,56 @@ public class MatchResearchService {
                    .replace("REVIEW_BLOCKED:", "")
                    .trim();
     }
+
+    private boolean hasManualResultEvidence(String matchInfo) {
+        if (matchInfo == null || matchInfo.trim().isEmpty()) return false;
+
+        String text = matchInfo.replace("\\n", "")
+                .replace("\\\"", "")
+                .replace(" ", "")
+                .replace("比", ":")
+                .replace("：", ":");
+
+        boolean hasScore = Pattern.compile("\\d+\\s*[:：比-]\\s*\\d+").matcher(matchInfo).find()
+                || Pattern.compile("\\d+[:：-]\\d+").matcher(text).find();
+
+        boolean hasManualResultWord =
+                text.contains("最终比分") ||
+                text.contains("全场比分") ||
+                text.contains("比分") ||
+                text.contains("赛果") ||
+                text.contains("比赛结果") ||
+                text.contains("完场") ||
+                text.contains("全场") ||
+                text.contains("完赛") ||
+                text.contains("已结束") ||
+                text.contains("结束") ||
+                text.contains("战胜") ||
+                text.contains("击败") ||
+                text.contains("不敌") ||
+                text.contains("负于") ||
+                text.contains("战平");
+
+        return hasScore && hasManualResultWord;
+    }
+
+    private String buildManualReviewMaterial(String matchInfo) {
+        String cleanedMatch = matchInfo == null ? "" : matchInfo.trim();
+        return "【赛后联网资料】\n"
+                + "一、最终赛果与比分\n"
+                + "后台人工输入已提供明确赛果：" + cleanedMatch + "\n"
+                + "二、进球与关键事件\n"
+                + "未获取到明确资料。\n"
+                + "三、红黄牌与争议点\n"
+                + "未获取到明确资料。\n"
+                + "四、技术统计与比赛走势\n"
+                + "未获取到明确资料。\n"
+                + "五、赛后声音\n"
+                + "未获取到明确资料。\n"
+                + "六、复盘写作限制\n"
+                + "本场复盘允许基于后台人工输入的明确最终比分进行推荐结算；未提供的进球球员、红黄牌、技术统计和采访禁止编造。";
+    }
+
     private boolean hasResultEvidence(String raw) {
         if (raw == null) return false;
 
