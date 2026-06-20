@@ -21,7 +21,6 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private boolean isPublicPath(String path, String method) {
         if (path.startsWith("/test")) return true;
         if (path.equals("/admin/login")) return true;
-        if (path.equals("/admin/check-auth")) return true;
         if (path.startsWith("/live/")) return true;
         if (path.startsWith("/upload/")) return true;
         if (path.equals("/wechat/callback")) return true;
