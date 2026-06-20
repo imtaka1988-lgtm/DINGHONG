@@ -52,13 +52,15 @@ ADMIN_PASS=change-me
 JWT_SECRET=change-me-to-a-random-32-byte-minimum-secret
 JWT_EXPIRATION_MS=86400000
 
-ODDS_API_ENABLED=true
+ODDS_API_ENABLED=false
 ODDS_API_KEY=
 ODDS_API_REGIONS=eu,uk,us
 ODDS_API_MARKETS=h2h,spreads,totals
 
 LIVE_PROXY_SECRET=change-me-random-proxy-secret
 ```
+
+说明：`ODDS_API_ENABLED` 当前默认关闭，目的是先避免文章生成阶段用同一套盘口后处理覆盖四位作者的独立观点。需要单独调试盘口接口时，再手动设置为 `true`。
 
 ### 2. 特别注意：微信 Token 目前仍未完成环境变量化
 
@@ -98,6 +100,7 @@ private static final String TOKEN = "dinghong2026";
 5. target/classes 下剩余 .class 文件、upload 运行时文件、bak 文件和本地运维脚本仍应继续清理。
 6. UploadController 需要补文件大小、MIME、扩展名和异常返回控制。
 7. 已经暴露过的历史密钥仍应视为泄露，生产密钥需要轮换；如果仓库保持 public，单纯删除当前文件不等于历史安全。
+8. 四位作者的文章差异化第一步已通过关闭默认盘口覆盖处理，后续还应继续做作者风格化推荐策略。
 ```
 
 ## 七、主要业务链路
@@ -159,7 +162,8 @@ export ADMIN_USER='admin'
 export ADMIN_PASS='你的真实后台密码'
 export JWT_SECRET='至少32字符的随机字符串'
 export LIVE_PROXY_SECRET='直播代理签名密钥'
-export ODDS_API_KEY='你的Odds API Key'
+export ODDS_API_ENABLED='false'
+# 需要调试盘口接口时再设置 ODDS_API_ENABLED='true' 并配置 ODDS_API_KEY
 
 mvn clean package
 java -jar target/dinghong-api-1.0.0.jar
@@ -178,7 +182,7 @@ java -jar target/dinghong-api-1.0.0.jar
 6. 后台 matches / articles 页面请求会携带 Authorization: Bearer token。
 7. /live/proxy 旧签名不可用，新签名可用。
 8. 微信 callback 验证通过；当前仍需确认硬编码 token 与微信后台一致。
-9. The Odds API 根据额度情况决定是否启用；额度紧张时设置 ODDS_API_ENABLED=false。
+9. 生成同一场比赛的四位作者文章时，先确认 ODDS_API_ENABLED=false，避免旧盘口覆盖逻辑把今日看法统一成同一套结果。
 10. 仓库中不再新增 target/、.class、.env、server_info.txt、upload/ 文件。
 ```
 
