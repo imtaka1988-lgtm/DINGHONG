@@ -17,9 +17,12 @@ public class JwtUtil {
     private final SecretKey key;
     private final long expirationMs;
 
-    public JwtUtil(@Value("${jwt.secret:dinghong-jwt-secret-key-change-in-production-2026}") String secret,
+    public JwtUtil(@Value("${jwt.secret:}") String secret,
                    @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
-        this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
+        if (secret == null || secret.trim().length() < 32) {
+            throw new IllegalStateException("JWT_SECRET is required and must be at least 32 characters.");
+        }
+        this.key = Keys.hmacShaKeyFor(secret.trim().getBytes(StandardCharsets.UTF_8));
         this.expirationMs = expirationMs;
     }
 
