@@ -26,7 +26,7 @@ live:
 # 顶红体育：The Odds API START
 odds:
   api:
-    enabled: ${ODDS_API_ENABLED:true}
+    enabled: ${ODDS_API_ENABLED:false}
     key: ${ODDS_API_KEY:}
     regions: ${ODDS_API_REGIONS:eu,uk,us}
     markets: ${ODDS_API_MARKETS:h2h,spreads,totals}
