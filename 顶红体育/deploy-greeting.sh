@@ -7,7 +7,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PROJECT_DIR="/www/wwwroot/dinghong"
+source "$SCRIPT_DIR/deploy_config.sh"
+PROJECT_DIR="${PROJECT_DIR:-/www/wwwroot/dinghong}"
 SRC_DIR="$PROJECT_DIR/app/dinghong-api/src/main/java/com/dinghong"
 CONTROLLER_DIR="$SRC_DIR/controller"
 ADMIN_DIR="$PROJECT_DIR/admin"
@@ -105,13 +106,13 @@ sleep 3
 if ps -p $NEW_PID > /dev/null 2>&1; then
     echo "===== 部署成功 ====="
     echo "PID: $NEW_PID"
-    echo "API 地址: http://api.5q.lol"
-    echo "后台配置页面: http://admin.5q.lol/wechat-greeting.html"
+    echo "API 地址: http://${API_DOMAIN}"
+    echo "后台配置页面: http://${ADMIN_DOMAIN}/wechat-greeting.html"
 
     echo ""
     echo "===== 后续步骤 ====="
     echo "1. 在微信后台设置客服消息服务器（如未设置）"
-    echo "2. 访问 http://admin.5q.lol/wechat-greeting.html 配置二维码和欢迎文字"
+    echo "2. 访问 http://${ADMIN_DOMAIN}/wechat-greeting.html 配置二维码和欢迎文字"
     echo "3. 测试：在公众号发消息，观察是否收到欢迎语"
 else
     echo "===== 启动失败，请检查日志 ====="

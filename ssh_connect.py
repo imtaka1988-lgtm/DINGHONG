@@ -6,10 +6,7 @@ import socket
 import termios
 import tty
 
-hostname = "8.210.102.206"
-port = 22
-username = "root"
-password = "Taka888."
+from deploy_config import HOST as hostname, PORT as port, USER as username, PASS as password
 
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())

@@ -1,3 +1,0 @@
-/data/dinghong
-/data/dinghong/docker-compose.yml
-no-py

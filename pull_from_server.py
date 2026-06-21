@@ -1,4 +1,4 @@
-"""从服务器 /data/dinghong 拉取文件到本地工作区"""
+"""从服务器拉取文件到本地工作区"""
 import paramiko
 import os
 import sys
@@ -6,19 +6,10 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-HOST = "8.210.102.206"
-PORT = 22
-USER = "root"
-PASS = "Taka888."
-REMOTE_DIR = "/data/dinghong"
-LOCAL_DIR = r"c:\Users\Administrator\Desktop\HOTY-相关\顶红公众号"
-
-EXCLUDE_DIRS = {
-    "mysql", "logs", "backup", "target", ".git",
-    "__pycache__", "node_modules", ".vscode"
-}
-
-EXCLUDE_EXT = {".pyc", ".log", ".tar.gz"}
+from deploy_config import (HOST, PORT, USER, PASS,
+                           REMOTE_PROJECT_DIR as REMOTE_DIR,
+                           LOCAL_BASE as LOCAL_DIR,
+                           EXCLUDE_DIRS, EXCLUDE_EXT)
 
 def connect_sftp():
     client = paramiko.SSHClient()

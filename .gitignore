@@ -13,6 +13,10 @@ server_info.txt
 *.pem
 *.key
 
+# deploy config (contains server IP + credentials)
+deploy_config.py
+顶红体育/deploy_config.sh
+
 # Java / Maven build outputs
 app/dinghong-api/target/
 target/
@@ -31,13 +35,3 @@ mysql/data/
 *.log
 __pycache__/
 *.pyc
-
-# local helper scripts with server credentials
-*_deploy.py
-deploy_*.py
-check_*.py
-fix_*.py
-force_deploy.py
-redeploy.py
-ssh_connect.py
-sync_*.py

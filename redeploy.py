@@ -1,91 +1,105 @@
-import paramiko
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""顶红体育 — 快速重部署：上传文件 + 编译 + 重启"""
 import os
 import base64
 import time
 
-s = paramiko.SSHClient()
-s.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-s.connect('8.210.102.206', username='root', password='Taka888.', timeout=15)
+from deploy_config import (REMOTE_PROJECT_DIR as PROJ,
+                           JDK17_PATH as JDK17,
+                           LOCAL_BASE)
+from ssh_utils import connect_ssh, run_cmd, kill_process
 
-def run(cmd):
-    stdin, stdout, stderr = s.exec_command(cmd)
-    out = stdout.read().decode().strip()
-    err = stderr.read().decode().strip()
-    if err:
-        print('  ERR: ' + err[:200])
-    return out
+JAR_NAME = "dinghong-api-1.0.0.jar"
+API_DIR = f"{PROJ}/app/dinghong-api"
 
-local_base = r'c:\Users\Administrator\Desktop\顶红公众号'
 
-# Upload files
-files = [
-    ('app\\dinghong-api\\src\\main\\java\\com\\dinghong\\service\\search\\BaiduSearchService.java',
-     '/data/dinghong/app/dinghong-api/src/main/java/com/dinghong/service/search/BaiduSearchService.java'),
-    ('app\\dinghong-api\\src\\main\\java\\com\\dinghong\\service\\research\\MatchResearchService.java',
-     '/data/dinghong/app/dinghong-api/src/main/java/com/dinghong/service/research/MatchResearchService.java'),
-]
-
-for local_rel, server_path in files:
-    local_path = os.path.join(local_base, local_rel)
-    content = open(local_path, 'rb').read()
+def upload_text_file(ssh, local_path, remote_path):
+    """通过 base64 编码上传文本文件。"""
+    content = open(local_path, "rb").read()
     encoded = base64.b64encode(content).decode()
-    d = os.path.dirname(server_path)
-    run('mkdir -p "' + d + '"')
-    run('echo "' + encoded + '" | base64 -d > "' + server_path + '"')
-    fname = os.path.basename(local_path)
-    stdin, stdout, stderr = s.exec_command('wc -c < "' + server_path + '"')
-    svr_size = int(stdout.read().decode().strip())
-    ok = abs(svr_size - len(content)) < 5
-    print('  ' + ('[OK]' if ok else '[FAIL]') + ' ' + fname
-          + ' local=' + str(len(content)) + ' svr=' + str(svr_size))
+    remote_dir = os.path.dirname(remote_path)
+    run_cmd(ssh, f'mkdir -p "{remote_dir}"', echo=False)
+    run_cmd(ssh, f'echo "{encoded}" | base64 -d > "{remote_path}"', echo=False)
 
-# Kill all old processes
-print()
-print('Killing old Java processes...')
-run('pkill -f dinghong-api 2>/dev/null || true')
-time.sleep(3)
+    stdin, stdout, stderr = ssh.exec_command(f'wc -c < "{remote_path}"')
+    remote_size = int(stdout.read().decode().strip())
+    ok = abs(remote_size - len(content)) < 5
+    status = "[OK]" if ok else "[FAIL]"
+    print(
+        f"  {status} {os.path.basename(local_path)} "
+        f"local={len(content)} remote={remote_size}"
+    )
 
-# Check no java running
-proc = run('ps aux | grep java | grep -v grep')
-print('Java after kill: ' + (proc[:100] if proc else 'NONE (clean)'))
 
-# Build
-print()
-print('Building...')
-build_out = run(
-    'cd /data/dinghong/app/dinghong-api '
-    '&& JAVA_HOME=/usr/lib/jvm/java-17-openjdk-17.0.19.0.10-1.0.2.1.al8.x86_64 '
-    'mvn clean package -DskipTests 2>&1 | tail -5'
-)
-print(build_out)
+def deploy_files(ssh, file_map):
+    """上传 file_map 中指定的文件到服务器。"""
+    print("\n===== 上传文件 =====")
+    for local_rel, remote_path in file_map:
+        local_path = os.path.join(LOCAL_BASE, local_rel)
+        if os.path.exists(local_path):
+            upload_text_file(ssh, local_path, remote_path)
+        else:
+            print(f"  [MISSING] {local_path}")
 
-# Check jar
-jar = run(
-    'ls -la '
-    '/data/dinghong/app/dinghong-api/target/dinghong-api-1.0.0.jar '
-    '2>/dev/null'
-)
-if 'dinghong-api' in jar:
-    print('JAR OK: ' + jar.split()[-1] if jar.split() else '')
 
-    # Start new
-    print('Starting...')
-    s.exec_command(
-        'cd /data/dinghong/app/dinghong-api '
-        '&& nohup java -jar target/dinghong-api-1.0.0.jar '
-        '> api.log 2>&1 &'
+def compile_project(ssh):
+    """编译 API 项目。"""
+    print("\n===== 编译 =====")
+    stdout, _ = run_cmd(
+        ssh,
+        f"cd {API_DIR} && export JAVA_HOME={JDK17} && export PATH={JDK17}/bin:$PATH && mvn clean package -DskipTests 2>&1 | tail -10",
+        timeout=300
+    )
+    if "BUILD SUCCESS" not in stdout:
+        print("编译失败")
+        print(stdout[-500:])
+        return False
+    print("  >> BUILD SUCCESS")
+    return True
+
+
+def restart_service(ssh):
+    """停旧进程，启新进程。"""
+    print("\n===== 重启服务 =====")
+    kill_process(ssh, "dinghong-api")
+    time.sleep(3)
+
+    run_cmd(
+        ssh,
+        f"cd {API_DIR} && nohup java -jar target/{JAR_NAME} > api.log 2>&1 &"
     )
     time.sleep(6)
 
-    # Verify
-    proc = run('ps aux | grep dinghong-api | grep -v grep')
-    print('Process: ' + (proc[:120] if proc else 'NOT DETECTED'))
+    stdout, _ = run_cmd(ssh, "ps aux | grep dinghong-api | grep -v grep")
+    if stdout.strip():
+        print(f"  进程: {stdout.strip()[:120]}")
+        return True
+    else:
+        print("服务未检测到，查看日志:")
+        log, _ = run_cmd(ssh, f"tail -5 {API_DIR}/api.log")
+        print(log)
+        return False
 
-    # Log tail
-    log = run('tail -5 /data/dinghong/app/dinghong-api/api.log 2>/dev/null')
-    print('Log tail:')
-    print(log)
-else:
-    print('BUILD FAILED')
 
-s.close()
+def main(file_map=None):
+    """
+    file_map: 可选，格式 [(local_relative_path, remote_absolute_path), ...]
+              如果不传，只做编译 + 重启。
+    """
+    ssh = connect_ssh()
+    print("已连接到服务器\n")
+
+    if file_map:
+        deploy_files(ssh, file_map)
+
+    if not compile_project(ssh):
+        ssh.close()
+        exit(1)
+
+    restart_service(ssh)
+    ssh.close()
+
+
+if __name__ == "__main__":
+    main()

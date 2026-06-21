@@ -1,21 +1,14 @@
-"""同步工作区文件到服务器 8.210.102.206"""
+"""同步工作区文件到服务器"""
 import paramiko
 import os
 import sys
-import stat
 import warnings
 
 warnings.filterwarnings('ignore')
 
-HOST = "8.210.102.206"
-PORT = 22
-USER = "root"
-PASS = "Taka888."
-LOCAL_DIR = r"c:\Users\Administrator\Desktop\HOTY-相关\顶红公众号"
-REMOTE_DIR = "/root/dinghong"
+from deploy_config import (HOST, PORT, USER, PASS, LOCAL_BASE as LOCAL_DIR,
+                           REMOTE_PROJECT_DIR as REMOTE_DIR, SYNC_DIRS)
 
-# 要同步的子目录（排除.git, node_modules等）
-SYNC_DIRS = ["顶红体育", "app"]
 
 def connect_sftp():
     client = paramiko.SSHClient()
@@ -23,6 +16,7 @@ def connect_sftp():
     client.connect(HOST, PORT, USER, PASS, timeout=15, look_for_keys=False, allow_agent=False)
     sftp = client.open_sftp()
     return client, sftp
+
 
 def ensure_remote_dir(sftp, remote_path):
     """递归创建远程目录"""
@@ -36,6 +30,7 @@ def ensure_remote_dir(sftp, remote_path):
             sftp.mkdir(current)
             print(f"  创建目录: {current}")
 
+
 def upload_file(sftp, local_path, remote_path):
     """上传单个文件"""
     try:
@@ -44,6 +39,7 @@ def upload_file(sftp, local_path, remote_path):
     except Exception as e:
         print(f"  上传失败 {local_path}: {e}")
         return False
+
 
 def sync_directory(sftp, local_dir, remote_dir):
     """递归同步目录"""
@@ -86,6 +82,7 @@ def sync_directory(sftp, local_dir, remote_dir):
             except Exception as e:
                 print(f"  [FAIL] {rel_path}/{f}: {e}")
     return count
+
 
 def main():
     print(f"\n{'='*60}")
@@ -141,6 +138,7 @@ def main():
     except Exception as e:
         print(f"连接失败: {e}")
         sys.exit(1)
+
 
 if __name__ == '__main__':
     main()
