@@ -1,0 +1,17 @@
+[Unit]
+Description=DINGHONG API Server
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/data/dinghong/app/dinghong-api
+EnvironmentFile=/data/dinghong/.env
+ExecStart=/usr/bin/java -jar /data/dinghong/app/dinghong-api/target/dinghong-api-1.0.0.jar
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/var/log/dinghong-api.log
+StandardError=append:/var/log/dinghong-api.log
+
+[Install]
+WantedBy=multi-user.target

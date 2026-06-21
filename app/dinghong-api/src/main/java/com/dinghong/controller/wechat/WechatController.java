@@ -1,5 +1,6 @@
 package com.dinghong.controller.wechat;
 
+import com.dinghong.repository.WechatGreetingRepository;
 import com.dinghong.service.MatchDbService;
 import com.dinghong.service.wechat.WechatAccessTokenService;
 import com.dinghong.service.wechat.WechatMediaService;
@@ -7,7 +8,6 @@ import com.dinghong.service.wechat.WechatMessageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
-import javax.sql.DataSource;
 import java.security.MessageDigest;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -18,18 +18,18 @@ import java.util.regex.Pattern;
 public class WechatController {
 
     private final String verifyToken;
+    private final WechatGreetingRepository greetingRepo;
     private final WechatAccessTokenService accessTokenService;
     private final WechatMediaService mediaService;
     private final WechatMessageService messageService;
     private final MatchDbService matchService;
-    private final DataSource dataSource;
 
     public WechatController(@Value("${wechat.verify-token}") String verifyToken,
+                            WechatGreetingRepository greetingRepo,
                             WechatAccessTokenService accessTokenService,
                             WechatMediaService mediaService,
                             WechatMessageService messageService,
-                            MatchDbService matchService,
-                            DataSource dataSource) {
+                            MatchDbService matchService) {
         if (verifyToken == null || verifyToken.trim().length() < 8) {
             throw new IllegalStateException(
                 "WECHAT_VERIFY_TOKEN 必须配置且长度不少于8位，当前值无效。"
@@ -37,11 +37,11 @@ public class WechatController {
             );
         }
         this.verifyToken = verifyToken.trim();
+        this.greetingRepo = greetingRepo;
         this.accessTokenService = accessTokenService;
         this.mediaService = mediaService;
         this.messageService = messageService;
         this.matchService = matchService;
-        this.dataSource = dataSource;
     }
 
     @GetMapping("/wechat/callback")
@@ -265,32 +265,23 @@ public class WechatController {
     }
 
     private GreetingConfig getGreetingConfig() {
-        try (java.sql.Connection conn = dataSource.getConnection()) {
-            java.sql.PreparedStatement ps = conn.prepareStatement(
-                "SELECT qr_image_url, greeting_text, enabled FROM wechat_greeting_config WHERE id=1"
-            );
-            java.sql.ResultSet rs = ps.executeQuery();
-            if (rs.next()) {
-                GreetingConfig c = new GreetingConfig();
-                c.qrImageUrl = safe(rs.getString("qr_image_url"));
-                c.greetingText = safe(rs.getString("greeting_text"));
-                c.enabled = rs.getInt("enabled") == 1;
-                return c;
-            }
+        try {
+            WechatGreetingRepository.GreetingConfigRow row = greetingRepo.getConfig();
+            if (row == null) return null;
+            GreetingConfig c = new GreetingConfig();
+            c.qrImageUrl = row.qrImageUrl;
+            c.greetingText = row.greetingText;
+            c.enabled = row.enabled;
+            return c;
         } catch (Exception e) {
             System.out.println("[DAILY_GREETING_GET_CONFIG_ERROR] " + e.getMessage());
+            return null;
         }
-        return null;
     }
 
     private boolean isGreetingSentToday(String openid) {
-        try (java.sql.Connection conn = dataSource.getConnection()) {
-            java.sql.PreparedStatement ps = conn.prepareStatement(
-                "SELECT 1 FROM user_daily_greeting WHERE openid=? AND greeting_date=CURDATE() LIMIT 1"
-            );
-            ps.setString(1, openid);
-            java.sql.ResultSet rs = ps.executeQuery();
-            return rs.next();
+        try {
+            return greetingRepo.isSentToday(openid);
         } catch (Exception e) {
             System.out.println("[DAILY_GREETING_CHECK_ERROR] " + e.getMessage());
             return false;
@@ -298,12 +289,8 @@ public class WechatController {
     }
 
     private void recordGreetingSent(String openid) {
-        try (java.sql.Connection conn = dataSource.getConnection()) {
-            java.sql.PreparedStatement ps = conn.prepareStatement(
-                "INSERT INTO user_daily_greeting (openid, greeting_date) VALUES (?, CURDATE())"
-            );
-            ps.setString(1, openid);
-            ps.executeUpdate();
+        try {
+            greetingRepo.recordSent(openid);
         } catch (Exception e) {
             System.out.println("[DAILY_GREETING_RECORD_ERROR] " + e.getMessage());
         }
