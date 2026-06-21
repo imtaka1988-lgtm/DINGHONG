@@ -17,8 +17,18 @@ public class AuthController {
     private final String adminPass;
 
     public AuthController(JwtUtil jwtUtil,
-                          @Value("${admin.user:admin}") String adminUser,
-                          @Value("${admin.pass:DingHong2026}") String adminPass) {
+                          @Value("${admin.user:}") String adminUser,
+                          @Value("${admin.pass:}") String adminPass) {
+        if (adminUser == null || adminUser.trim().isEmpty()) {
+            throw new IllegalStateException(
+                "ADMIN_USER 必须配置，不能为空。请在 .env 中设置 ADMIN_USER。"
+            );
+        }
+        if (adminPass == null || adminPass.trim().length() < 6) {
+            throw new IllegalStateException(
+                "ADMIN_PASS 必须配置且长度不少于6位。请在 .env 中设置 ADMIN_PASS。"
+            );
+        }
         this.jwtUtil = jwtUtil;
         this.adminUser = adminUser;
         this.adminPass = adminPass;

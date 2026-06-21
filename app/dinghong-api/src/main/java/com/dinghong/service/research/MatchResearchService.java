@@ -550,17 +550,16 @@ public class MatchResearchService {
         boolean hasScore = Pattern.compile("\\d+\\s*[:：比-]\\s*\\d+").matcher(raw).find()
                 || Pattern.compile("\\d+[:：-]\\d+").matcher(text).find();
 
+        // 终局标志词：必须是明确表示比赛已结束或有最终结果的词语
+        // 注意：泛化的"比分"不单独作为终局标志，必须搭配"最终"/"全场"等限定词
         boolean hasResultWord =
                 text.contains("最终比分") ||
-                text.contains("比分") ||
+                text.contains("全场比分") ||
                 text.contains("赛果") ||
-                text.contains("战报") ||
-                text.contains("全场") ||
+                text.contains("比赛结果") ||
                 text.contains("完场") ||
                 text.contains("完赛") ||
                 text.contains("已结束") ||
-                text.contains("结束") ||
-                text.contains("比赛结果") ||
                 text.contains("击败") ||
                 text.contains("战胜") ||
                 text.contains("不敌") ||
@@ -572,6 +571,8 @@ public class MatchResearchService {
                 text.contains("逼平") ||
                 text.contains("淘汰") ||
                 text.contains("夺冠") ||
+                text.contains("战报") ||
+                text.contains("全场") ||
                 text.contains("点球") ||
                 text.contains("加时") ||
                 text.contains("技术统计") ||

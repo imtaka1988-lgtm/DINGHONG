@@ -1,5 +1,6 @@
 package com.dinghong.controller.admin;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -14,12 +15,24 @@ import java.util.UUID;
 @RestController
 public class UploadController {
 
-    private static final String UPLOAD_DIR = "/data/dinghong/upload/";
-
+    private final String uploadDir;
+    private final String publicBaseUrl;
     private final DataSource dataSource;
 
-    public UploadController(DataSource dataSource) {
+    public UploadController(@Value("${upload.dir}") String uploadDir,
+                            @Value("${upload.public-base-url}") String publicBaseUrl,
+                            DataSource dataSource) {
+        this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
+        this.publicBaseUrl = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
         this.dataSource = dataSource;
+
+        // 确保上传目录存在
+        File dir = new File(this.uploadDir);
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw new IllegalStateException(
+                "无法创建上传目录: " + this.uploadDir + "。请检查 UPLOAD_DIR 配置和文件权限。"
+            );
+        }
     }
 
     @PostMapping("/admin/upload/{matchId}")
@@ -31,10 +44,10 @@ public class UploadController {
             String suffix = original.substring(original.lastIndexOf("."));
             String filename = UUID.randomUUID().toString().replace("-", "") + suffix;
 
-            File dest = new File(UPLOAD_DIR + filename);
+            File dest = new File(uploadDir + filename);
             file.transferTo(dest);
 
-            String imageUrl = "https://api.5q.lol/upload/" + filename;
+            String imageUrl = publicBaseUrl + filename;
 
             String accessToken = getAccessToken();
             String mediaId = uploadToWechat(accessToken, dest);
@@ -64,10 +77,10 @@ public class UploadController {
             String suffix = original.substring(original.lastIndexOf("."));
             String filename = UUID.randomUUID().toString().replace("-", "") + suffix;
 
-            File dest = new File(UPLOAD_DIR + filename);
+            File dest = new File(uploadDir + filename);
             file.transferTo(dest);
 
-            return "https://api.5q.lol/upload/" + filename;
+            return publicBaseUrl + filename;
 
         } catch (Exception e) {
             return "upload error: " + e.getMessage();
@@ -77,6 +90,9 @@ public class UploadController {
     private String getAccessToken() throws Exception {
         String appid = System.getenv("WECHAT_APPID");
         String secret = System.getenv("WECHAT_SECRET");
+        // Note: UploadController also uses System.getenv for WECHAT credentials
+        // because it needs them at upload time, not at construction time.
+        // This is acceptable as these env vars are set at server startup.
 
         String api = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
                 + appid + "&secret=" + secret;

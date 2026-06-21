@@ -18,6 +18,15 @@ jwt:
 
 wechat:
   verify-token: ${WECHAT_VERIFY_TOKEN:}
+  appid: ${WECHAT_APPID:}
+  secret: ${WECHAT_SECRET:}
+
+upload:
+  dir: ${UPLOAD_DIR:/data/dinghong/upload}
+  public-base-url: ${UPLOAD_PUBLIC_BASE_URL:}
+  live-qr-dir: ${UPLOAD_DIR:/data/dinghong/upload}/live_qr
+  live-qr-public-prefix: ${UPLOAD_PUBLIC_BASE_URL:}/live_qr
+  live-play-prefix: ${LIVE_PLAY_BASE_URL:https://live.5q.lol/play.html?key=}
 
 live:
   proxy:

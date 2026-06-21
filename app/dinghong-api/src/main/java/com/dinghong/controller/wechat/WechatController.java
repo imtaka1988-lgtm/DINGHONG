@@ -1,6 +1,7 @@
 package com.dinghong.controller.wechat;
 
 import com.dinghong.service.MatchDbService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.sql.DataSource;
@@ -20,12 +21,26 @@ import java.util.regex.Pattern;
 @RestController
 public class WechatController {
 
-    private static final String TOKEN = "dinghong2026";
-
+    private final String verifyToken;
+    private final String wechatAppId;
+    private final String wechatSecret;
     private final MatchDbService matchService;
     private final DataSource dataSource;
 
-    public WechatController(MatchDbService matchService, DataSource dataSource) {
+    public WechatController(@Value("${wechat.verify-token}") String verifyToken,
+                            @Value("${wechat.appid}") String wechatAppId,
+                            @Value("${wechat.secret}") String wechatSecret,
+                            MatchDbService matchService,
+                            DataSource dataSource) {
+        if (verifyToken == null || verifyToken.trim().length() < 8) {
+            throw new IllegalStateException(
+                "WECHAT_VERIFY_TOKEN 必须配置且长度不少于8位，当前值无效。"
+                + "请在 .env 中设置 WECHAT_VERIFY_TOKEN 为随机字符串。"
+            );
+        }
+        this.verifyToken = verifyToken.trim();
+        this.wechatAppId = wechatAppId == null ? "" : wechatAppId.trim();
+        this.wechatSecret = wechatSecret == null ? "" : wechatSecret.trim();
         this.matchService = matchService;
         this.dataSource = dataSource;
     }
@@ -36,7 +51,7 @@ public class WechatController {
             return "wechat callback ok";
         }
 
-        String[] arr = {TOKEN, timestamp, nonce};
+        String[] arr = {verifyToken, timestamp, nonce};
         Arrays.sort(arr);
         String raw = String.join("", arr);
         String sha1 = sha1(raw);
@@ -423,14 +438,12 @@ public class WechatController {
 
     private String getAccessToken() {
         try {
-            String appId = System.getenv("WECHAT_APPID");
-            String secret = System.getenv("WECHAT_SECRET");
-            if (appId == null || secret == null || appId.isEmpty() || secret.isEmpty()) {
+            if (wechatAppId.isEmpty() || wechatSecret.isEmpty()) {
                 System.out.println("[DAILY_GREETING] WECHAT_APPID or WECHAT_SECRET not set");
                 return null;
             }
 
-            String tokenUrl = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=" + appId + "&secret=" + secret;
+            String tokenUrl = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=" + wechatAppId + "&secret=" + wechatSecret;
             HttpURLConnection conn = (HttpURLConnection) new URL(tokenUrl).openConnection();
             conn.setRequestMethod("GET");
             conn.setConnectTimeout(5000);

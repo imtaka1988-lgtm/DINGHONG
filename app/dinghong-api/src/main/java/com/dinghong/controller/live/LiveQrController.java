@@ -5,6 +5,7 @@ import com.google.zxing.EncodeHintType;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.imageio.ImageIO;
@@ -25,21 +26,34 @@ import java.util.Map;
 @RequestMapping("/admin/matches")
 public class LiveQrController {
 
-    private static final String UPLOAD_DIR = "/data/dinghong/upload/live_qr/";
-    private static final String PUBLIC_PREFIX = "https://api.5q.lol/upload/live_qr/";
-    private static final String PLAY_PREFIX = "https://live.5q.lol/play.html?key=";
-
+    private final String uploadDir;
+    private final String publicPrefix;
+    private final String playPrefix;
     private final DataSource dataSource;
 
-    public LiveQrController(DataSource dataSource) {
+    public LiveQrController(@Value("${upload.live-qr-dir}") String uploadDir,
+                            @Value("${upload.live-qr-public-prefix}") String publicPrefix,
+                            @Value("${upload.live-play-prefix}") String playPrefix,
+                            DataSource dataSource) {
+        this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
+        this.publicPrefix = publicPrefix.endsWith("/") ? publicPrefix : publicPrefix + "/";
+        this.playPrefix = playPrefix;
         this.dataSource = dataSource;
+
+        // 确保目录存在
+        File dir = new File(this.uploadDir);
+        if (!dir.exists() && !dir.mkdirs()) {
+            throw new IllegalStateException(
+                "无法创建 Live QR 上传目录: " + this.uploadDir + "。请检查配置和文件权限。"
+            );
+        }
     }
 
     @PostMapping("/{id}/qr")
     public String generateQr(@PathVariable Long id) {
         try {
-            File dir = new File(UPLOAD_DIR);
-            if (!dir.exists()) dir.mkdirs();
+        File dir = new File(uploadDir);
+        if (!dir.exists()) dir.mkdirs();
 
             String streamKey;
             String homeTeam;
@@ -73,17 +87,17 @@ public class LiveQrController {
                 }
             }
 
-            String playUrl = PLAY_PREFIX + streamKey;
+        String playUrl = playPrefix + streamKey;
 
             // 原始二维码文件（内部用）
-            File rawQrFile = new File(UPLOAD_DIR + streamKey + "_raw.png");
+            File rawQrFile = new File(uploadDir + streamKey + "_raw.png");
             // 最终公众号使用的海报图
-            File posterFile = new File(UPLOAD_DIR + streamKey + ".png");
+            File posterFile = new File(uploadDir + streamKey + ".png");
 
             createQrPng(playUrl, rawQrFile);
             createPosterPng(rawQrFile, posterFile, homeTeam, awayTeam, matchTime);
 
-            String imageUrl = PUBLIC_PREFIX + posterFile.getName();
+        String imageUrl = publicPrefix + posterFile.getName();
 
             String accessToken = getAccessToken();
             String mediaId = uploadToWechat(accessToken, posterFile);
@@ -176,7 +190,7 @@ public class LiveQrController {
         g.drawImage(qr, qrX, qrY, qrSize, qrSize, null);
 
         // 底部提示文案
-        
+
         // 底部强提示：红色大字，提醒不要在微信内识别
         g.setColor(new Color(220, 38, 38));
         g.setFont(posterFont(Font.BOLD, 58));
