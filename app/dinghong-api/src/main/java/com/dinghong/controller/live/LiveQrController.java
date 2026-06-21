@@ -29,15 +29,21 @@ public class LiveQrController {
     private final String uploadDir;
     private final String publicPrefix;
     private final String playPrefix;
+    private final String wechatAppId;
+    private final String wechatSecret;
     private final DataSource dataSource;
 
     public LiveQrController(@Value("${upload.live-qr-dir}") String uploadDir,
                             @Value("${upload.live-qr-public-prefix}") String publicPrefix,
                             @Value("${upload.live-play-prefix}") String playPrefix,
+                            @Value("${wechat.appid}") String wechatAppId,
+                            @Value("${wechat.secret}") String wechatSecret,
                             DataSource dataSource) {
         this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
         this.publicPrefix = publicPrefix.endsWith("/") ? publicPrefix : publicPrefix + "/";
         this.playPrefix = playPrefix;
+        this.wechatAppId = wechatAppId == null ? "" : wechatAppId.trim();
+        this.wechatSecret = wechatSecret == null ? "" : wechatSecret.trim();
         this.dataSource = dataSource;
 
         // 确保目录存在
@@ -321,11 +327,13 @@ public class LiveQrController {
     }
 
     private String getAccessToken() throws Exception {
-        String appid = System.getenv("WECHAT_APPID");
-        String secret = System.getenv("WECHAT_SECRET");
+        if (wechatAppId.isEmpty() || wechatSecret.isEmpty()) {
+            System.out.println("[LIVE_QR] WECHAT_APPID or WECHAT_SECRET not set, skip wechat upload");
+            throw new RuntimeException("wechat credentials not configured");
+        }
 
         String api = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
-                + appid + "&secret=" + secret;
+                + wechatAppId + "&secret=" + wechatSecret;
 
         String json = httpGet(api);
         return extract(json, "access_token");

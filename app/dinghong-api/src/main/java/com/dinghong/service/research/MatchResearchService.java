@@ -41,20 +41,13 @@ public class MatchResearchService {
         boolean rawHasBothTeams = hasTeamEvidence(matchInfo, raw);
         boolean rawHasAnyTeam = hasAnyTeamEvidence(matchInfo, raw);
 
-        /*
-         * 赛前修复：
-         * 旧逻辑要求百度原始结果必须同时命中主客两队，
-         * 但百度摘要经常只展示一方简称、青年队缩写或只展示赛程标题，导致可查比赛被误杀。
-         * 这里改成：原始资料至少命中任意一方球队即可进入 AI 整理；
-         * 如果双方都命中，只是更强证据；如果只命中一方，文章写作时按“资料有限”处理，禁止编造另一方资料。
-         */
         if (!rawHasAnyTeam) {
-            System.out.println("[PREVIEW_BLOCKED] 原始资料未命中任一球队。match=" + matchInfo);
+            System.out.println("[PREVIEW_BLOCKED] 原始资料未命中任一球队。match=" + maskMatchInfo(matchInfo));
             return "PREVIEW_BLOCKED：未检索到该比赛任一球队的有效联网资料，禁止生成赛前预测文章。";
         }
 
         if (!rawHasBothTeams) {
-            System.out.println("[PREVIEW_WARN] 原始资料未同时命中双方队名，继续整理但按资料有限处理。match=" + matchInfo);
+            System.out.println("[PREVIEW_WARN] 原始资料未同时命中双方队名，继续整理但按资料有限处理。match=" + maskMatchInfo(matchInfo));
         }
 
         String prompt =
@@ -92,7 +85,7 @@ public class MatchResearchService {
         if (cleaned.trim().isEmpty()
                 || cleaned.contains("DeepSeek API Key 未配置")
                 || cleaned.contains("DeepSeek调用失败")) {
-            System.out.println("[PREVIEW_BLOCKED] 赛前资料整理失败。match=" + matchInfo + ", result=" + cleaned);
+            System.out.println("[PREVIEW_BLOCKED] 赛前资料整理失败。match=" + maskMatchInfo(matchInfo));
             return "PREVIEW_BLOCKED：赛前联网资料整理失败，禁止生成赛前预测文章。";
         }
 
@@ -101,14 +94,9 @@ public class MatchResearchService {
 
     public ReviewResearchResult researchReview(String matchInfo) {
 
-        /*
-         * 复盘兜底：后台或请求参数已经人工提供“最终比分/赛果/完场”等明确赛果时，
-         * 不再强制依赖百度搜索。这样可以处理已经结束但搜索源未返回明确结果的历史比赛。
-         * 仍然要求同时出现比分表达，避免没有结果时放开复盘。
-         */
         if (hasManualResultEvidence(matchInfo)) {
             String material = buildManualReviewMaterial(matchInfo);
-            System.out.println("[REVIEW_MANUAL_RESULT] 使用人工明确赛果生成复盘资料。match=" + matchInfo);
+            System.out.println("[REVIEW_MANUAL_RESULT] 使用人工明确赛果生成复盘资料。match=" + maskMatchInfo(matchInfo));
             return ReviewResearchResult.passed(matchInfo, material, matchInfo);
         }
 
@@ -116,26 +104,19 @@ public class MatchResearchService {
 
         if (isSearchUnavailable(raw)) {
             String reason = searchUnavailableReason(raw) + "禁止生成赛后复盘文章。";
-            System.out.println("[REVIEW_BLOCKED] " + reason + " match=" + matchInfo);
+            System.out.println("[REVIEW_BLOCKED] " + reason + " match=" + maskMatchInfo(matchInfo));
             return ReviewResearchResult.blocked(matchInfo, reason, raw);
         }
 
-        /*
-         * 重要修复：
-         * 这里不再因为第一轮 hasTeamEvidence / hasResultEvidence 失败就直接拦截。
-         * 百度返回的标题/摘要经常只有 “中国U19 0-3 民主刚果U23” 这种短句，
-         * 旧逻辑会因为没有“全场/战报/赛果”等词而误判为未结束。
-         * 正确做法：先把原始资料交给模型整理，再做兜底校验。
-         */
         boolean rawHasTeam = hasTeamEvidence(matchInfo, raw);
         boolean rawHasResult = hasResultEvidence(raw);
 
         if (!rawHasTeam) {
-            System.out.println("[REVIEW_WARN] 原始资料未强命中双方队名，继续交给整理模型判断。match=" + matchInfo);
+            System.out.println("[REVIEW_WARN] 原始资料未强命中双方队名，继续交给整理模型判断。match=" + maskMatchInfo(matchInfo));
         }
 
         if (!rawHasResult) {
-            System.out.println("[REVIEW_WARN] 原始资料未强命中赛果关键词，继续交给整理模型判断。match=" + matchInfo);
+            System.out.println("[REVIEW_WARN] 原始资料未强命中赛果关键词，继续交给整理模型判断。match=" + maskMatchInfo(matchInfo));
         }
 
         String prompt =
@@ -178,12 +159,12 @@ public class MatchResearchService {
         String cleaned = clean(result);
 
         if (cleaned.contains("REVIEW_BLOCKED")) {
-            System.out.println("[REVIEW_BLOCKED] 资料整理模型判定阻断。match=" + matchInfo);
+            System.out.println("[REVIEW_BLOCKED] 资料整理模型判定阻断。match=" + maskMatchInfo(matchInfo));
             return ReviewResearchResult.blocked(matchInfo, extractBlockedReason(cleaned), raw);
         }
 
         if (cleaned.trim().isEmpty()) {
-            System.out.println("[REVIEW_BLOCKED] 赛后资料整理为空。match=" + matchInfo);
+            System.out.println("[REVIEW_BLOCKED] 赛后资料整理为空。match=" + maskMatchInfo(matchInfo));
             return ReviewResearchResult.blocked(matchInfo, "赛后资料整理为空，禁止生成复盘文章。", raw);
         }
 
@@ -191,18 +172,17 @@ public class MatchResearchService {
         boolean cleanedHasResult = hasResultEvidence(cleaned);
 
         if (!rawHasTeam && !cleanedHasTeam) {
-            System.out.println("[REVIEW_BLOCKED] 原始资料和整理资料均未命中双方队名。match=" + matchInfo);
+            System.out.println("[REVIEW_BLOCKED] 原始资料和整理资料均未命中双方队名。match=" + maskMatchInfo(matchInfo));
             return ReviewResearchResult.blocked(matchInfo, "未检索到该比赛双方球队的明确赛后资料，禁止生成复盘文章。", raw);
         }
 
         if (!rawHasResult && !cleanedHasResult) {
-            System.out.println("[REVIEW_BLOCKED] 原始资料和整理资料均未包含明确赛果。match=" + matchInfo);
+            System.out.println("[REVIEW_BLOCKED] 原始资料和整理资料均未包含明确赛果。match=" + maskMatchInfo(matchInfo));
             return ReviewResearchResult.blocked(matchInfo, "未检索到该比赛的明确赛果，禁止生成复盘文章。", raw);
         }
 
         return ReviewResearchResult.passed(matchInfo, cleaned, raw);
     }
-
 
 
     private boolean hasTeamEvidence(String matchInfo, String text) {
@@ -218,8 +198,6 @@ public class MatchResearchService {
 
         boolean hasHome = hasTeamNameOrAlias(normalizedText, teams[0]);
         boolean hasAway = hasTeamNameOrAlias(normalizedText, teams[1]);
-
-        System.out.println("[TEAM_CHECK] home=" + teams[0] + ", away=" + teams[1] + ", hasHome=" + hasHome + ", hasAway=" + hasAway);
 
         return hasHome && hasAway;
     }
@@ -262,81 +240,41 @@ public class MatchResearchService {
 
         if (n.contains("巴黎圣日耳曼") || n.contains("巴黎圣日尔曼") || n.equals("巴黎") || n.contains("psg") || n.contains("parissaintgermain")) {
             return new String[] {
-                    "巴黎圣日耳曼",
-                    "巴黎圣日尔曼",
-                    "巴黎",
-                    "大巴黎",
-                    "PSG",
-                    "Paris Saint-Germain",
-                    "Paris Saint Germain"
+                    "巴黎圣日耳曼", "巴黎圣日尔曼", "巴黎", "大巴黎",
+                    "PSG", "Paris Saint-Germain", "Paris Saint Germain"
             };
         }
 
         if (n.contains("阿森纳") || n.contains("arsenal") || n.contains("枪手")) {
-            return new String[] {
-                    "阿森纳",
-                    "Arsenal",
-                    "枪手"
-            };
+            return new String[] { "阿森纳", "Arsenal", "枪手" };
         }
 
         if (n.contains("德国") || n.contains("germany") || n.contains("deutschland")) {
-            return new String[] {
-                    "德国",
-                    "德国队",
-                    "Germany",
-                    "Deutschland"
-            };
+            return new String[] { "德国", "德国队", "Germany", "Deutschland" };
         }
 
         if (n.contains("芬兰") || n.contains("finland")) {
-            return new String[] {
-                    "芬兰",
-                    "芬兰队",
-                    "Finland"
-            };
+            return new String[] { "芬兰", "芬兰队", "Finland" };
         }
 
         if (n.contains("巴西") || n.contains("brazil")) {
-            return new String[] {
-                    "巴西",
-                    "巴西队",
-                    "Brazil",
-                    "Selecao"
-            };
+            return new String[] { "巴西", "巴西队", "Brazil", "Selecao" };
         }
 
         if (n.contains("巴拿马") || n.contains("panama")) {
-            return new String[] {
-                    "巴拿马",
-                    "巴拿马队",
-                    "Panama"
-            };
+            return new String[] { "巴拿马", "巴拿马队", "Panama" };
         }
 
         if (n.contains("拜仁") || n.contains("bayern")) {
-            return new String[] {
-                    "拜仁",
-                    "拜仁慕尼黑",
-                    "Bayern",
-                    "Bayern Munich"
-            };
+            return new String[] { "拜仁", "拜仁慕尼黑", "Bayern", "Bayern Munich" };
         }
 
         if (n.contains("皇马") || n.contains("皇家马德里") || n.contains("realmadrid")) {
-            return new String[] {
-                    "皇马",
-                    "皇家马德里",
-                    "Real Madrid"
-            };
+            return new String[] { "皇马", "皇家马德里", "Real Madrid" };
         }
 
         if (n.contains("巴萨") || n.contains("巴塞罗那") || n.contains("barcelona")) {
-            return new String[] {
-                    "巴萨",
-                    "巴塞罗那",
-                    "Barcelona"
-            };
+            return new String[] { "巴萨", "巴塞罗那", "Barcelona" };
         }
 
         return new String[0];
@@ -377,9 +315,6 @@ public class MatchResearchService {
 
         String cleaned = name.trim();
 
-        // 去掉后台标题里附带的描述，例如：
-        // 德国 VS 芬兰 —— 欧洲区热点
-        // 巴西 VS 巴拿马 —— 美洲区焦点
         cleaned = cleaned.replace("【足球赛事】", "")
                 .replace("【篮球赛事】", "")
                 .replace("足球赛事", "")
@@ -393,10 +328,8 @@ public class MatchResearchService {
                 .replaceAll("[（(].*$", "")
                 .trim();
 
-        // “国际友谊：法国U16 VS 阿根廷U16” 这类标题，左侧冒号前是联赛，不是队名。
         cleaned = cleaned.replaceAll("^[^:：,，｜|]{1,30}[:：,，｜|]", "").trim();
 
-        // “国际友谊 法国U16 VS 阿根廷U16” 这类标题，左侧常带联赛前缀。
         String[] prefixes = new String[] {
                 "足球", "篮球", "国际友谊", "友谊赛", "热身赛",
                 "中超", "中甲", "中乙", "中冠", "英超", "西甲", "德甲", "意甲", "法甲",
@@ -448,7 +381,6 @@ public class MatchResearchService {
             return true;
         }
 
-        // 多关键词聚合后，可能某一条失败、另一条成功；不能因为局部“获取失败”就整体拦截。
         if (raw.contains("获取失败")) {
             String withoutFailure = raw.replaceAll("百度搜索资料获取失败：[^\n]*", "").trim();
             return withoutFailure.length() < 80;
@@ -485,6 +417,13 @@ public class MatchResearchService {
                    .trim();
     }
 
+    /**
+     * 检查 matchInfo 是否包含明确的人工赛果标志。
+     * 必须同时满足：①有比分表达、②有终局词、③无预测噪音。
+     * 示例：
+     *   "比分预测 2-1" → false（有预测噪音）
+     *   "最终比分 2-1" → true（明确终局词）
+     */
     private boolean hasManualResultEvidence(String matchInfo) {
         if (matchInfo == null || matchInfo.trim().isEmpty()) return false;
 
@@ -497,24 +436,30 @@ public class MatchResearchService {
         boolean hasScore = Pattern.compile("\\d+\\s*[:：比-]\\s*\\d+").matcher(matchInfo).find()
                 || Pattern.compile("\\d+[:：-]\\d+").matcher(text).find();
 
-        boolean hasManualResultWord =
+        // 必须是明确终局词，不含泛化"比分"或"结束"
+        boolean hasResultWord =
                 text.contains("最终比分") ||
                 text.contains("全场比分") ||
-                text.contains("比分") ||
                 text.contains("赛果") ||
                 text.contains("比赛结果") ||
                 text.contains("完场") ||
                 text.contains("全场") ||
                 text.contains("完赛") ||
                 text.contains("已结束") ||
-                text.contains("结束") ||
                 text.contains("战胜") ||
                 text.contains("击败") ||
                 text.contains("不敌") ||
                 text.contains("负于") ||
                 text.contains("战平");
 
-        return hasScore && hasManualResultWord;
+        // 排除预测类表达
+        boolean hasPreviewNoise =
+                text.contains("比分预测") ||
+                text.contains("预测比分") ||
+                text.contains("参考比分") ||
+                text.contains("赛前预测");
+
+        return hasScore && hasResultWord && !hasPreviewNoise;
     }
 
     private String buildManualReviewMaterial(String matchInfo) {
@@ -543,15 +488,9 @@ public class MatchResearchService {
                          .replace("比", ":")
                          .replace("：", ":");
 
-        /*
-         * 比分表达：
-         * 0-3 / 3:0 / 3：0 / 3比0 都算。
-         */
         boolean hasScore = Pattern.compile("\\d+\\s*[:：比-]\\s*\\d+").matcher(raw).find()
                 || Pattern.compile("\\d+[:：-]\\d+").matcher(text).find();
 
-        // 终局标志词：必须是明确表示比赛已结束或有最终结果的词语
-        // 注意：泛化的"比分"不单独作为终局标志，必须搭配"最终"/"全场"等限定词
         boolean hasResultWord =
                 text.contains("最终比分") ||
                 text.contains("全场比分") ||
@@ -584,10 +523,6 @@ public class MatchResearchService {
                 text.contains("比分参考") ||
                 text.contains("赛前预测");
 
-        /*
-         * 如果既有赛前预测噪音，也有明确比分和赛果词，仍然允许通过。
-         * 旧逻辑只要看到预测词就容易误杀。
-         */
         boolean pass = hasScore && (hasResultWord || !hasPreviewNoise);
 
         System.out.println("[REVIEW_CHECK] hasScore=" + hasScore
@@ -598,10 +533,13 @@ public class MatchResearchService {
         return pass;
     }
 
+    private String maskMatchInfo(String info) {
+        if (info == null || info.length() <= 20) return info;
+        return info.substring(0, 20) + "...";
+    }
 
     private String clean(String text) {
         if (text == null) return "";
-
         return text.replace("#", "")
                    .replace("*", "")
                    .replace("```", "")

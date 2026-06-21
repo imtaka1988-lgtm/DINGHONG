@@ -10,21 +10,42 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
 public class UploadController {
 
+    private static final Set<String> ALLOWED_EXTENSIONS = new HashSet<>(Arrays.asList(
+            "jpg", "jpeg", "png", "webp", "gif"
+    ));
+    private static final long MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
     private final String uploadDir;
     private final String publicBaseUrl;
+    private final String wechatAppId;
+    private final String wechatSecret;
     private final DataSource dataSource;
 
     public UploadController(@Value("${upload.dir}") String uploadDir,
                             @Value("${upload.public-base-url}") String publicBaseUrl,
+                            @Value("${wechat.appid}") String wechatAppId,
+                            @Value("${wechat.secret}") String wechatSecret,
                             DataSource dataSource) {
         this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
         this.publicBaseUrl = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
+        this.wechatAppId = wechatAppId == null ? "" : wechatAppId.trim();
+        this.wechatSecret = wechatSecret == null ? "" : wechatSecret.trim();
         this.dataSource = dataSource;
+
+        // 校验 publicBaseUrl
+        if (!this.publicBaseUrl.startsWith("http://") && !this.publicBaseUrl.startsWith("https://")) {
+            throw new IllegalStateException(
+                "UPLOAD_PUBLIC_BASE_URL 必须为 http:// 或 https:// 开头，当前值: " + this.publicBaseUrl
+            );
+        }
 
         // 确保上传目录存在
         File dir = new File(this.uploadDir);
@@ -37,9 +58,10 @@ public class UploadController {
 
     @PostMapping("/admin/upload/{matchId}")
     public String uploadForMatch(@PathVariable Long matchId, @RequestParam("file") MultipartFile file) {
-        try {
-            if (file.isEmpty()) return "file empty";
+        String validated = validateFile(file);
+        if (validated != null) return validated;
 
+        try {
             String original = file.getOriginalFilename();
             String suffix = original.substring(original.lastIndexOf("."));
             String filename = UUID.randomUUID().toString().replace("-", "") + suffix;
@@ -50,6 +72,10 @@ public class UploadController {
             String imageUrl = publicBaseUrl + filename;
 
             String accessToken = getAccessToken();
+            if (accessToken == null || accessToken.isEmpty()) {
+                return imageUrl + "|(wechat token unavailable, media_id not uploaded)";
+            }
+
             String mediaId = uploadToWechat(accessToken, dest);
 
             try (Connection conn = dataSource.getConnection()) {
@@ -70,9 +96,10 @@ public class UploadController {
 
     @PostMapping("/admin/upload")
     public String upload(@RequestParam("file") MultipartFile file) {
-        try {
-            if (file.isEmpty()) return "file empty";
+        String validated = validateFile(file);
+        if (validated != null) return validated;
 
+        try {
             String original = file.getOriginalFilename();
             String suffix = original.substring(original.lastIndexOf("."));
             String filename = UUID.randomUUID().toString().replace("-", "") + suffix;
@@ -87,18 +114,43 @@ public class UploadController {
         }
     }
 
-    private String getAccessToken() throws Exception {
-        String appid = System.getenv("WECHAT_APPID");
-        String secret = System.getenv("WECHAT_SECRET");
-        // Note: UploadController also uses System.getenv for WECHAT credentials
-        // because it needs them at upload time, not at construction time.
-        // This is acceptable as these env vars are set at server startup.
+    private String validateFile(MultipartFile file) {
+        if (file.isEmpty()) return "file empty";
 
-        String api = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
-                + appid + "&secret=" + secret;
+        String original = file.getOriginalFilename();
+        if (original == null || original.isEmpty()) return "filename missing";
+        if (file.getSize() > MAX_FILE_SIZE) return "file too large, max 10MB";
 
-        String json = httpGet(api);
-        return extract(json, "access_token");
+        int dot = original.lastIndexOf(".");
+        if (dot == -1) return "file has no extension";
+
+        String ext = original.substring(dot + 1).toLowerCase();
+        if (!ALLOWED_EXTENSIONS.contains(ext)) return "extension not allowed: ." + ext;
+
+        String contentType = file.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return "content type must be image/*, got: " + contentType;
+        }
+
+        return null; // valid
+    }
+
+    private String getAccessToken() {
+        try {
+            if (wechatAppId.isEmpty() || wechatSecret.isEmpty()) {
+                System.out.println("[UPLOAD] WECHAT_APPID or WECHAT_SECRET not set, skip wechat upload");
+                return null;
+            }
+
+            String api = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
+                    + wechatAppId + "&secret=" + wechatSecret;
+
+            String json = httpGet(api);
+            return extract(json, "access_token");
+        } catch (Exception e) {
+            System.out.println("[UPLOAD_TOKEN_ERROR] " + e.getMessage());
+            return null;
+        }
     }
 
     private String uploadToWechat(String token, File file) throws Exception {
