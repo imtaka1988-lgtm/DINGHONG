@@ -1,5 +1,6 @@
 package com.dinghong.controller.admin;
 
+import com.dinghong.repository.MatchLiveRepository;
 import com.dinghong.service.storage.UploadFileValidator;
 import com.dinghong.service.storage.UploadStorageService;
 import com.dinghong.service.wechat.WechatAccessTokenService;
@@ -7,30 +8,27 @@ import com.dinghong.service.wechat.WechatMediaService;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.sql.DataSource;
 import java.io.File;
-import java.sql.Connection;
-import java.sql.PreparedStatement;
 
 @RestController
 public class UploadController {
 
     private final UploadStorageService storage;
     private final UploadFileValidator validator;
+    private final MatchLiveRepository matchLiveRepo;
     private final WechatAccessTokenService accessTokenService;
     private final WechatMediaService mediaService;
-    private final DataSource dataSource;
 
     public UploadController(UploadStorageService storage,
                             UploadFileValidator validator,
+                            MatchLiveRepository matchLiveRepo,
                             WechatAccessTokenService accessTokenService,
-                            WechatMediaService mediaService,
-                            DataSource dataSource) {
+                            WechatMediaService mediaService) {
         this.storage = storage;
         this.validator = validator;
+        this.matchLiveRepo = matchLiveRepo;
         this.accessTokenService = accessTokenService;
         this.mediaService = mediaService;
-        this.dataSource = dataSource;
     }
 
     @PostMapping("/admin/upload/{matchId}")
@@ -48,15 +46,7 @@ public class UploadController {
             }
 
             String mediaId = mediaService.uploadImage(accessToken, dest);
-
-            try (Connection conn = dataSource.getConnection()) {
-                String sql = "UPDATE match_live SET qrcode_url=?, wechat_media_id=? WHERE id=?";
-                PreparedStatement ps = conn.prepareStatement(sql);
-                ps.setString(1, imageUrl);
-                ps.setString(2, mediaId);
-                ps.setLong(3, matchId);
-                ps.executeUpdate();
-            }
+            matchLiveRepo.updateQr(matchId, imageUrl, mediaId);
 
             return imageUrl + "|" + mediaId;
 

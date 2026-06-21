@@ -94,7 +94,7 @@ nohup java -jar target/dinghong-api-1.0.0.jar > /tmp/dinghong-api.log 2>&1 &
 ### 方式 B：systemd 管理
 
 ```bash
-cp deploy/systemd/dinghong-api.service.example /etc/systemd/system/dinghong-api.service
+cp /data/dinghong/deploy/systemd/dinghong-api.service.example /etc/systemd/system/dinghong-api.service
 vi /etc/systemd/system/dinghong-api.service  # 修改路径和密码
 systemctl daemon-reload
 systemctl enable dinghong-api

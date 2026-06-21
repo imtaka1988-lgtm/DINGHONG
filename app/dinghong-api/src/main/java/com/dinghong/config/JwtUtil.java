@@ -4,7 +4,6 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -17,13 +16,13 @@ public class JwtUtil {
     private final SecretKey key;
     private final long expirationMs;
 
-    public JwtUtil(@Value("${jwt.secret:}") String secret,
-                   @Value("${jwt.expiration-ms:86400000}") long expirationMs) {
+    public JwtUtil(JwtProperties props) {
+        String secret = props.getSecret();
         if (secret == null || secret.trim().length() < 32) {
             throw new IllegalStateException("JWT_SECRET is required and must be at least 32 characters.");
         }
         this.key = Keys.hmacShaKeyFor(secret.trim().getBytes(StandardCharsets.UTF_8));
-        this.expirationMs = expirationMs;
+        this.expirationMs = props.getExpirationMs();
     }
 
     public String generateToken(String username) {

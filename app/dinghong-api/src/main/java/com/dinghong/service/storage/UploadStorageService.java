@@ -4,7 +4,7 @@ import com.dinghong.config.UploadProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 import java.io.File;
 import java.util.UUID;
 
@@ -19,6 +19,19 @@ public class UploadStorageService {
 
     public UploadStorageService(UploadProperties props) {
         this.props = props;
+        // 校验 publicBaseUrl
+        String url = props.getPublicBaseUrl();
+        if (url != null && !url.isEmpty()
+                && !url.startsWith("http://") && !url.startsWith("https://")) {
+            throw new IllegalStateException(
+                "UPLOAD_PUBLIC_BASE_URL 必须以 http:// 或 https:// 开头，当前值: " + url
+            );
+        }
+        // 校验必要目录不为空
+        String dir = props.getDir();
+        if (dir == null || dir.trim().isEmpty()) {
+            throw new IllegalStateException("UPLOAD_DIR 不能为空。请在 .env 中设置 UPLOAD_DIR。");
+        }
     }
 
     @PostConstruct

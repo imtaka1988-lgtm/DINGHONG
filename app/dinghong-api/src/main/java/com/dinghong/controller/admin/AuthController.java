@@ -1,7 +1,7 @@
 package com.dinghong.controller.admin;
 
+import com.dinghong.config.AdminProperties;
 import com.dinghong.config.JwtUtil;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -16,22 +16,22 @@ public class AuthController {
     private final String adminUser;
     private final String adminPass;
 
-    public AuthController(JwtUtil jwtUtil,
-                          @Value("${admin.user:}") String adminUser,
-                          @Value("${admin.pass:}") String adminPass) {
-        if (adminUser == null || adminUser.trim().isEmpty()) {
+    public AuthController(JwtUtil jwtUtil, AdminProperties adminProps) {
+        String user = adminProps.getUser();
+        String pass = adminProps.getPass();
+        if (user == null || user.trim().isEmpty()) {
             throw new IllegalStateException(
                 "ADMIN_USER 必须配置，不能为空。请在 .env 中设置 ADMIN_USER。"
             );
         }
-        if (adminPass == null || adminPass.trim().length() < 6) {
+        if (pass == null || pass.trim().length() < 6) {
             throw new IllegalStateException(
                 "ADMIN_PASS 必须配置且长度不少于6位。请在 .env 中设置 ADMIN_PASS。"
             );
         }
         this.jwtUtil = jwtUtil;
-        this.adminUser = adminUser;
-        this.adminPass = adminPass;
+        this.adminUser = user.trim();
+        this.adminPass = pass.trim();
     }
 
     @PostMapping("/login")

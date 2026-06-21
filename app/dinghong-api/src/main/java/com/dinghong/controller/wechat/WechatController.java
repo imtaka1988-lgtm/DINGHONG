@@ -60,14 +60,13 @@ public class WechatController {
 
     @PostMapping(value = "/wechat/callback", produces = "application/xml;charset=UTF-8")
     public String receive(@RequestBody String xml) {
-        System.out.println("[WECHAT_CALLBACK_XML] " + xml);
-
         String fromUser = getValue(xml, "FromUserName");
         String toUser = getValue(xml, "ToUserName");
         String msgType = getValue(xml, "MsgType");
         String content = getValue(xml, "Content");
 
-        System.out.println("[WECHAT_CALLBACK_PARSED] from=" + fromUser + ", to=" + toUser + ", msgType=" + msgType + ", content=" + content);
+        String maskedFrom = fromUser.length() > 4 ? "***" + fromUser.substring(fromUser.length() - 4) : "***";
+        System.out.println("[WECHAT_CALLBACK] msgType=" + msgType + ", from=" + maskedFrom + ", contentLen=" + (content == null ? 0 : content.length()));
 
         // 每日首次互动欢迎语
         trySendDailyGreeting(fromUser);
@@ -76,7 +75,7 @@ public class WechatController {
             String event = getValue(xml, "Event");
             String eventKey = getValue(xml, "EventKey");
 
-            System.out.println("[WECHAT_EVENT] event=" + event + ", eventKey=" + eventKey);
+            System.out.println("[WECHAT_EVENT] event=" + event + ", from=" + maskedFrom);
 
             if ("subscribe".equalsIgnoreCase(event)) {
                 String welcome = getSubscribeWelcome();
@@ -237,13 +236,15 @@ public class WechatController {
         // 1. 检查功能是否启用
         GreetingConfig config = getGreetingConfig();
         if (config == null || !config.enabled) {
-            System.out.println("[DAILY_GREETING] disabled, skip openid=" + openid);
+            String mo = openid.length() > 4 ? "***" + openid.substring(openid.length() - 4) : "***";
+            System.out.println("[DAILY_GREETING] disabled, skip openid=" + mo);
             return;
         }
 
         // 2. 检查今天是否已发送过
         if (isGreetingSentToday(openid)) {
-            System.out.println("[DAILY_GREETING] already sent today, skip openid=" + openid);
+            String mo = openid.length() > 4 ? "***" + openid.substring(openid.length() - 4) : "***";
+            System.out.println("[DAILY_GREETING] already sent today, skip openid=" + mo);
             return;
         }
 
@@ -255,7 +256,8 @@ public class WechatController {
         final GreetingConfig finalConfig = config;
         new Thread(() -> sendDailyGreeting(finalOpenid, finalConfig)).start();
 
-        System.out.println("[DAILY_GREETING] triggered openid=" + finalOpenid + " qrUrl=" + finalConfig.qrImageUrl);
+        String mo = finalOpenid.length() > 4 ? "***" + finalOpenid.substring(finalOpenid.length() - 4) : "***";
+        System.out.println("[DAILY_GREETING] triggered openid=" + mo);
     }
 
     private static class GreetingConfig {

@@ -424,6 +424,13 @@ public class MatchResearchService {
      *   "比分预测 2-1" → false（有预测噪音）
      *   "最终比分 2-1" → true（明确终局词）
      */
+    /**
+     * 仅用于单元测试的公开入口。
+     */
+    boolean hasManualResultEvidencePublic(String matchInfo) {
+        return hasManualResultEvidence(matchInfo);
+    }
+
     private boolean hasManualResultEvidence(String matchInfo) {
         if (matchInfo == null || matchInfo.trim().isEmpty()) return false;
 
