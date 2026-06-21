@@ -1,13 +1,13 @@
 package com.dinghong.controller.admin;
 
+import com.dinghong.service.wechat.WechatAccessTokenService;
+import com.dinghong.service.wechat.WechatMediaService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.sql.DataSource;
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.util.Arrays;
@@ -25,29 +25,27 @@ public class UploadController {
 
     private final String uploadDir;
     private final String publicBaseUrl;
-    private final String wechatAppId;
-    private final String wechatSecret;
+    private final WechatAccessTokenService accessTokenService;
+    private final WechatMediaService mediaService;
     private final DataSource dataSource;
 
     public UploadController(@Value("${upload.dir}") String uploadDir,
                             @Value("${upload.public-base-url}") String publicBaseUrl,
-                            @Value("${wechat.appid}") String wechatAppId,
-                            @Value("${wechat.secret}") String wechatSecret,
+                            WechatAccessTokenService accessTokenService,
+                            WechatMediaService mediaService,
                             DataSource dataSource) {
         this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
         this.publicBaseUrl = publicBaseUrl.endsWith("/") ? publicBaseUrl : publicBaseUrl + "/";
-        this.wechatAppId = wechatAppId == null ? "" : wechatAppId.trim();
-        this.wechatSecret = wechatSecret == null ? "" : wechatSecret.trim();
+        this.accessTokenService = accessTokenService;
+        this.mediaService = mediaService;
         this.dataSource = dataSource;
 
-        // 校验 publicBaseUrl
         if (!this.publicBaseUrl.startsWith("http://") && !this.publicBaseUrl.startsWith("https://")) {
             throw new IllegalStateException(
                 "UPLOAD_PUBLIC_BASE_URL 必须为 http:// 或 https:// 开头，当前值: " + this.publicBaseUrl
             );
         }
 
-        // 确保上传目录存在
         File dir = new File(this.uploadDir);
         if (!dir.exists() && !dir.mkdirs()) {
             throw new IllegalStateException(
@@ -71,12 +69,12 @@ public class UploadController {
 
             String imageUrl = publicBaseUrl + filename;
 
-            String accessToken = getAccessToken();
+            String accessToken = accessTokenService.getAccessToken();
             if (accessToken == null || accessToken.isEmpty()) {
                 return imageUrl + "|(wechat token unavailable, media_id not uploaded)";
             }
 
-            String mediaId = uploadToWechat(accessToken, dest);
+            String mediaId = mediaService.uploadImage(accessToken, dest);
 
             try (Connection conn = dataSource.getConnection()) {
                 String sql = "UPDATE match_live SET qrcode_url=?, wechat_media_id=? WHERE id=?";
@@ -132,76 +130,6 @@ public class UploadController {
             return "content type must be image/*, got: " + contentType;
         }
 
-        return null; // valid
-    }
-
-    private String getAccessToken() {
-        try {
-            if (wechatAppId.isEmpty() || wechatSecret.isEmpty()) {
-                System.out.println("[UPLOAD] WECHAT_APPID or WECHAT_SECRET not set, skip wechat upload");
-                return null;
-            }
-
-            String api = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
-                    + wechatAppId + "&secret=" + wechatSecret;
-
-            String json = httpGet(api);
-            return extract(json, "access_token");
-        } catch (Exception e) {
-            System.out.println("[UPLOAD_TOKEN_ERROR] " + e.getMessage());
-            return null;
-        }
-    }
-
-    private String uploadToWechat(String token, File file) throws Exception {
-        String boundary = "----DINGHONG" + System.currentTimeMillis();
-        URL url = new URL("https://api.weixin.qq.com/cgi-bin/media/upload?access_token=" + token + "&type=image");
-
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setDoOutput(true);
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-
-        try (OutputStream out = conn.getOutputStream();
-             FileInputStream fis = new FileInputStream(file)) {
-
-            out.write(("--" + boundary + "\r\n").getBytes());
-            out.write(("Content-Disposition: form-data; name=\"media\"; filename=\"" + file.getName() + "\"\r\n").getBytes());
-            out.write(("Content-Type: image/jpeg\r\n\r\n").getBytes());
-
-            byte[] buffer = new byte[4096];
-            int len;
-            while ((len = fis.read(buffer)) != -1) {
-                out.write(buffer, 0, len);
-            }
-
-            out.write(("\r\n--" + boundary + "--\r\n").getBytes());
-        }
-
-        String json = read(conn.getInputStream());
-        return extract(json, "media_id");
-    }
-
-    private String httpGet(String urlStr) throws Exception {
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        return read(conn.getInputStream());
-    }
-
-    private String read(InputStream in) throws Exception {
-        BufferedReader br = new BufferedReader(new InputStreamReader(in, "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = br.readLine()) != null) sb.append(line);
-        return sb.toString();
-    }
-
-    private String extract(String json, String key) {
-        String mark = "\"" + key + "\":\"";
-        int s = json.indexOf(mark);
-        if (s == -1) return "";
-        int start = s + mark.length();
-        int end = json.indexOf("\"", start);
-        return json.substring(start, end);
+        return null;
     }
 }

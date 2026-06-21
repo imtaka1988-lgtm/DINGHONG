@@ -1,19 +1,15 @@
 package com.dinghong.controller.wechat;
 
 import com.dinghong.service.MatchDbService;
+import com.dinghong.service.wechat.WechatAccessTokenService;
+import com.dinghong.service.wechat.WechatMediaService;
+import com.dinghong.service.wechat.WechatMessageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.sql.DataSource;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
-import java.time.LocalDate;
-import java.time.ZoneId;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -22,14 +18,16 @@ import java.util.regex.Pattern;
 public class WechatController {
 
     private final String verifyToken;
-    private final String wechatAppId;
-    private final String wechatSecret;
+    private final WechatAccessTokenService accessTokenService;
+    private final WechatMediaService mediaService;
+    private final WechatMessageService messageService;
     private final MatchDbService matchService;
     private final DataSource dataSource;
 
     public WechatController(@Value("${wechat.verify-token}") String verifyToken,
-                            @Value("${wechat.appid}") String wechatAppId,
-                            @Value("${wechat.secret}") String wechatSecret,
+                            WechatAccessTokenService accessTokenService,
+                            WechatMediaService mediaService,
+                            WechatMessageService messageService,
                             MatchDbService matchService,
                             DataSource dataSource) {
         if (verifyToken == null || verifyToken.trim().length() < 8) {
@@ -39,8 +37,9 @@ public class WechatController {
             );
         }
         this.verifyToken = verifyToken.trim();
-        this.wechatAppId = wechatAppId == null ? "" : wechatAppId.trim();
-        this.wechatSecret = wechatSecret == null ? "" : wechatSecret.trim();
+        this.accessTokenService = accessTokenService;
+        this.mediaService = mediaService;
+        this.messageService = messageService;
         this.matchService = matchService;
         this.dataSource = dataSource;
     }
@@ -316,23 +315,22 @@ public class WechatController {
      */
     private void sendDailyGreeting(String openid, GreetingConfig config) {
         try {
-            String accessToken = getAccessToken();
+            String accessToken = accessTokenService.getAccessToken();
             if (accessToken == null || accessToken.isEmpty()) {
                 System.out.println("[DAILY_GREETING] no access token, skip");
                 return;
             }
 
-            // 1. 先发送文字
             if (config.greetingText != null && !config.greetingText.isEmpty()) {
                 String textJson = "{\"touser\":\"" + openid + "\",\"msgtype\":\"text\",\"text\":{\"content\":\"" + escapeJson(config.greetingText) + "\"}}";
-                sendCustomerMessage(accessToken, textJson);
+                messageService.sendCustomMessage(accessToken, textJson);
                 Thread.sleep(300);
             }
 
-            // 2. 再发送图片（如果配置了二维码URL）
             if (config.qrImageUrl != null && !config.qrImageUrl.isEmpty()) {
-                String imageJson = "{\"touser\":\"" + openid + "\",\"msgtype\":\"image\",\"image\":{\"media_id\":\"" + getMediaIdByUrl(accessToken, config.qrImageUrl) + "\"}}";
-                sendCustomerMessage(accessToken, imageJson);
+                String mediaId = resolveMediaId(accessToken, config.qrImageUrl);
+                String imageJson = "{\"touser\":\"" + openid + "\",\"msgtype\":\"image\",\"image\":{\"media_id\":\"" + mediaId + "\"}}";
+                messageService.sendCustomMessage(accessToken, imageJson);
             }
 
         } catch (Exception e) {
@@ -340,153 +338,34 @@ public class WechatController {
         }
     }
 
-    private void sendCustomerMessage(String accessToken, String json) {
-        try {
-            String api = "https://api.weixin.qq.com/cgi-bin/message/custom/send?access_token=" + accessToken;
-            HttpURLConnection conn = (HttpURLConnection) new URL(api).openConnection();
-            conn.setRequestMethod("POST");
-            conn.setDoOutput(true);
-            conn.setRequestProperty("Content-Type", "application/json;charset=UTF-8");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-
-            try (OutputStream os = conn.getOutputStream()) {
-                os.write(json.getBytes(StandardCharsets.UTF_8));
-            }
-
-            int code = conn.getResponseCode();
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                    code == 200 ? conn.getInputStream() : conn.getErrorStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-            }
-
-            System.out.println("[DAILY_GREETING_CUSTOM_MSG] code=" + code + " resp=" + sb);
-        } catch (Exception e) {
-            System.out.println("[DAILY_GREETING_CUSTOM_MSG_ERROR] " + e.getMessage());
-        }
-    }
-
-    private String getMediaIdByUrl(String accessToken, String imageUrl) {
-        // 如果 qrImageUrl 本身就是微信 media_id（不是 http 开头），直接返回
+    private String resolveMediaId(String accessToken, String imageUrl) {
         if (imageUrl != null && !imageUrl.startsWith("http://") && !imageUrl.startsWith("https://")) {
-            System.out.println("[DAILY_GREETING] using direct media_id=" + imageUrl);
             return imageUrl;
         }
-
-        // 否则作为外部图片上传到微信临时素材
         try {
-            String uploadApi = "https://api.weixin.qq.com/cgi-bin/media/upload?access_token=" + accessToken + "&type=image";
-
-            // 下载图片
-            java.io.ByteArrayOutputStream baos = new java.io.ByteArrayOutputStream();
-            HttpURLConnection imgConn = (HttpURLConnection) new URL(imageUrl).openConnection();
-            imgConn.setRequestMethod("GET");
-            imgConn.setConnectTimeout(8000);
-            imgConn.setReadTimeout(8000);
-            imgConn.setRequestProperty("User-Agent", "DingHong/1.0");
-
-            try (java.io.InputStream is = imgConn.getInputStream()) {
-                byte[] buf = new byte[4096];
-                int n;
-                while ((n = is.read(buf)) != -1) {
-                    baos.write(buf, 0, n);
-                }
-            }
-
-            byte[] imageBytes = baos.toByteArray();
-
-            // 上传到微信
-            HttpURLConnection uploadConn = (HttpURLConnection) new URL(uploadApi).openConnection();
-            uploadConn.setRequestMethod("POST");
-            uploadConn.setDoOutput(true);
-            uploadConn.setConnectTimeout(10000);
-            uploadConn.setReadTimeout(10000);
-
-            String boundary = "----DingHongFormBoundary" + System.currentTimeMillis();
-            uploadConn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-
-            try (OutputStream os = uploadConn.getOutputStream()) {
-                os.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
-                os.write(("Content-Disposition: form-data; name=\"media\"; filename=\"qr.jpg\"\r\n").getBytes(StandardCharsets.UTF_8));
-                os.write("Content-Type: image/jpeg\r\n\r\n".getBytes(StandardCharsets.UTF_8));
-                os.write(imageBytes);
-                os.write(("\r\n--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
-            }
-
-            int code = uploadConn.getResponseCode();
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(
-                    code == 200 ? uploadConn.getInputStream() : uploadConn.getErrorStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-            }
-
-            String resp = sb.toString();
-            System.out.println("[DAILY_GREETING_UPLOAD] code=" + code + " resp=" + resp);
-
-            // 提取 media_id
-            String mediaId = extractJsonString(resp, "media_id");
-            return mediaId != null ? mediaId : "";
-
+            java.io.File tmp = java.io.File.createTempFile("dh_qr_", ".jpg");
+            downloadToFile(imageUrl, tmp);
+            String mediaId = mediaService.uploadImage(accessToken, tmp);
+            tmp.delete();
+            return mediaId;
         } catch (Exception e) {
             System.out.println("[DAILY_GREETING_UPLOAD_ERROR] " + e.getMessage());
             return "";
         }
     }
 
-    private String getAccessToken() {
-        try {
-            if (wechatAppId.isEmpty() || wechatSecret.isEmpty()) {
-                System.out.println("[DAILY_GREETING] WECHAT_APPID or WECHAT_SECRET not set");
-                return null;
-            }
-
-            String tokenUrl = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=" + wechatAppId + "&secret=" + wechatSecret;
-            HttpURLConnection conn = (HttpURLConnection) new URL(tokenUrl).openConnection();
-            conn.setRequestMethod("GET");
-            conn.setConnectTimeout(5000);
-            conn.setReadTimeout(5000);
-
-            StringBuilder sb = new StringBuilder();
-            try (BufferedReader br = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = br.readLine()) != null) sb.append(line);
-            }
-
-            String json = sb.toString();
-            System.out.println("[DAILY_GREETING_TOKEN] resp=" + json);
-
-            return extractJsonString(json, "access_token");
-        } catch (Exception e) {
-            System.out.println("[DAILY_GREETING_TOKEN_ERROR] " + e.getMessage());
-            return null;
+    private void downloadToFile(String urlStr, java.io.File dest) throws Exception {
+        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(urlStr).openConnection();
+        conn.setRequestMethod("GET");
+        conn.setConnectTimeout(8000);
+        conn.setReadTimeout(8000);
+        conn.setRequestProperty("User-Agent", "DingHong/1.0");
+        try (java.io.InputStream is = conn.getInputStream();
+             java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = is.read(buf)) != -1) fos.write(buf, 0, n);
         }
-    }
-
-    private String extractJsonString(String json, String key) {
-        if (json == null || key == null) return null;
-        String prefix = "\"" + key + "\":\"";
-        int start = json.indexOf(prefix);
-        if (start == -1) return null;
-        start += prefix.length();
-        StringBuilder sb = new StringBuilder();
-        boolean escaped = false;
-        for (int i = start; i < json.length(); i++) {
-            char c = json.charAt(i);
-            if (escaped) {
-                sb.append(c);
-                escaped = false;
-            } else if (c == '\\') {
-                escaped = true;
-            } else if (c == '"') {
-                break;
-            } else {
-                sb.append(c);
-            }
-        }
-        return sb.toString();
     }
 
     private String escapeJson(String s) {

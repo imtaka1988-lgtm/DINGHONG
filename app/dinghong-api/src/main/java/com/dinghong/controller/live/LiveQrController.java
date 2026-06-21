@@ -1,5 +1,7 @@
 package com.dinghong.controller.live;
 
+import com.dinghong.service.wechat.WechatAccessTokenService;
+import com.dinghong.service.wechat.WechatMediaService;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
@@ -29,21 +31,21 @@ public class LiveQrController {
     private final String uploadDir;
     private final String publicPrefix;
     private final String playPrefix;
-    private final String wechatAppId;
-    private final String wechatSecret;
+    private final WechatAccessTokenService accessTokenService;
+    private final WechatMediaService mediaService;
     private final DataSource dataSource;
 
     public LiveQrController(@Value("${upload.live-qr-dir}") String uploadDir,
                             @Value("${upload.live-qr-public-prefix}") String publicPrefix,
                             @Value("${upload.live-play-prefix}") String playPrefix,
-                            @Value("${wechat.appid}") String wechatAppId,
-                            @Value("${wechat.secret}") String wechatSecret,
+                            WechatAccessTokenService accessTokenService,
+                            WechatMediaService mediaService,
                             DataSource dataSource) {
         this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
         this.publicPrefix = publicPrefix.endsWith("/") ? publicPrefix : publicPrefix + "/";
         this.playPrefix = playPrefix;
-        this.wechatAppId = wechatAppId == null ? "" : wechatAppId.trim();
-        this.wechatSecret = wechatSecret == null ? "" : wechatSecret.trim();
+        this.accessTokenService = accessTokenService;
+        this.mediaService = mediaService;
         this.dataSource = dataSource;
 
         // 确保目录存在
@@ -327,95 +329,16 @@ public class LiveQrController {
     }
 
     private String getAccessToken() throws Exception {
-        if (wechatAppId.isEmpty() || wechatSecret.isEmpty()) {
+        String token = accessTokenService.getAccessToken();
+        if (token == null || token.isEmpty()) {
             System.out.println("[LIVE_QR] WECHAT_APPID or WECHAT_SECRET not set, skip wechat upload");
             throw new RuntimeException("wechat credentials not configured");
         }
-
-        String api = "https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid="
-                + wechatAppId + "&secret=" + wechatSecret;
-
-        String json = httpGet(api);
-        return extract(json, "access_token");
+        return token;
     }
 
     private String uploadToWechat(String token, File file) throws Exception {
-        String boundary = "----DINGHONGQR" + System.currentTimeMillis();
-        URL url = new URL("https://api.weixin.qq.com/cgi-bin/media/upload?access_token=" + token + "&type=image");
-
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setDoOutput(true);
-        conn.setRequestMethod("POST");
-        conn.setRequestProperty("Content-Type", "multipart/form-data; boundary=" + boundary);
-
-        try (OutputStream out = conn.getOutputStream();
-             FileInputStream fis = new FileInputStream(file)) {
-
-            out.write(("--" + boundary + "\r\n").getBytes());
-            out.write(("Content-Disposition: form-data; name=\"media\"; filename=\"" + file.getName() + "\"\r\n").getBytes());
-            out.write(("Content-Type: image/png\r\n\r\n").getBytes());
-
-            byte[] buffer = new byte[4096];
-            int len;
-            while ((len = fis.read(buffer)) != -1) {
-                out.write(buffer, 0, len);
-            }
-
-            out.write(("\r\n--" + boundary + "--\r\n").getBytes());
-        }
-
-        InputStream in;
-        if (conn.getResponseCode() >= 400) {
-            in = conn.getErrorStream();
-        } else {
-            in = conn.getInputStream();
-        }
-
-        String json = read(in);
-        return extract(json, "media_id");
-    }
-
-    private String httpGet(String urlStr) throws Exception {
-        URL url = new URL(urlStr);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-
-        InputStream in;
-        if (conn.getResponseCode() >= 400) {
-            in = conn.getErrorStream();
-        } else {
-            in = conn.getInputStream();
-        }
-
-        return read(in);
-    }
-
-    private String read(InputStream in) throws Exception {
-        if (in == null) return "";
-
-        BufferedReader br = new BufferedReader(new InputStreamReader(in, "UTF-8"));
-        StringBuilder sb = new StringBuilder();
-        String line;
-
-        while ((line = br.readLine()) != null) {
-            sb.append(line);
-        }
-
-        return sb.toString();
-    }
-
-    private String extract(String json, String key) {
-        if (json == null) return "";
-
-        String mark = "\"" + key + "\":\"";
-        int s = json.indexOf(mark);
-        if (s == -1) return "";
-
-        int start = s + mark.length();
-        int end = json.indexOf("\"", start);
-
-        if (end == -1) return "";
-
-        return json.substring(start, end);
+        return mediaService.uploadImagePng(token, file);
     }
 
     private String safe(String s) {
