@@ -1,5 +1,6 @@
 package com.dinghong.controller.live;
 
+import com.dinghong.repository.MatchLiveRepository;
 import com.dinghong.service.storage.UploadStorageService;
 import com.dinghong.service.wechat.WechatAccessTokenService;
 import com.dinghong.service.wechat.WechatMediaService;
@@ -11,14 +12,12 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import org.springframework.web.bind.annotation.*;
 
 import javax.imageio.ImageIO;
-import javax.sql.DataSource;
 import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
-import java.io.*;
+import java.io.File;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
-import java.sql.*;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -26,62 +25,37 @@ import java.util.Map;
 @RequestMapping("/admin/matches")
 public class LiveQrController {
 
+    private final MatchLiveRepository matchLiveRepo;
     private final UploadStorageService storage;
     private final WechatAccessTokenService accessTokenService;
     private final WechatMediaService mediaService;
-    private final DataSource dataSource;
 
-    public LiveQrController(UploadStorageService storage,
+    public LiveQrController(MatchLiveRepository matchLiveRepo,
+                            UploadStorageService storage,
                             WechatAccessTokenService accessTokenService,
-                            WechatMediaService mediaService,
-                            DataSource dataSource) {
+                            WechatMediaService mediaService) {
+        this.matchLiveRepo = matchLiveRepo;
         this.storage = storage;
         this.accessTokenService = accessTokenService;
         this.mediaService = mediaService;
-        this.dataSource = dataSource;
     }
 
     @PostMapping("/{id}/qr")
     public String generateQr(@PathVariable Long id) {
         try {
-            String streamKey;
-            String homeTeam;
-            String awayTeam;
-            String matchTime;
-
-            try (Connection conn = dataSource.getConnection()) {
-                PreparedStatement ps = conn.prepareStatement(
-                        "SELECT id, stream_key, home_team, away_team, match_time FROM match_live WHERE id=? LIMIT 1"
-                );
-                ps.setLong(1, id);
-                ResultSet rs = ps.executeQuery();
-
-                if (!rs.next()) {
-                    return "error: 比赛不存在";
-                }
-
-                streamKey = safe(rs.getString("stream_key"));
-                homeTeam = safe(rs.getString("home_team"));
-                awayTeam = safe(rs.getString("away_team"));
-                matchTime = safe(rs.getString("match_time"));
-
-                if (streamKey.isEmpty()) {
-                    streamKey = "live_" + id;
-                    PreparedStatement ups = conn.prepareStatement(
-                            "UPDATE match_live SET stream_key=? WHERE id=?"
-                    );
-                    ups.setString(1, streamKey);
-                    ups.setLong(2, id);
-                    ups.executeUpdate();
-                }
+            MatchLiveRepository.MatchLiveRow match = matchLiveRepo.findById(id);
+            if (match == null) {
+                return "error: 比赛不存在";
             }
 
+            String streamKey = matchLiveRepo.ensureStreamKey(id, match.streamKey);
             String playUrl = storage.getLivePlayPrefix() + streamKey;
+
             File rawQrFile = storage.getLiveQrRawFile(streamKey);
             File posterFile = storage.getLiveQrFile(streamKey);
 
             createQrPng(playUrl, rawQrFile);
-            createPosterPng(rawQrFile, posterFile, homeTeam, awayTeam, matchTime);
+            createPosterPng(rawQrFile, posterFile, match.homeTeam, match.awayTeam, match.matchTime);
 
             String imageUrl = storage.getLiveQrPublicPrefix() + posterFile.getName();
 
@@ -92,15 +66,7 @@ public class LiveQrController {
                 return "error: 二维码海报已生成，但上传微信素材失败。图片地址：" + imageUrl;
             }
 
-            try (Connection conn = dataSource.getConnection()) {
-                PreparedStatement ps = conn.prepareStatement(
-                        "UPDATE match_live SET qrcode_url=?, wechat_media_id=? WHERE id=?"
-                );
-                ps.setString(1, imageUrl);
-                ps.setString(2, mediaId);
-                ps.setLong(3, id);
-                ps.executeUpdate();
-            }
+            matchLiveRepo.updateQr(id, imageUrl, mediaId);
 
             return "ok|" + imageUrl + "|" + mediaId + "|" + playUrl;
 
@@ -178,21 +144,6 @@ public class LiveQrController {
         ImageIO.write(canvas, "png", posterFile);
     }
 
-    private Font pickFont(int style, int size) {
-        String[] preferred = {
-                "WenQuanYi Micro Hei", "WenQuanYi Micro Hei Mono",
-                "Droid Sans", "Noto Sans CJK SC", "Source Han Sans SC",
-                "Microsoft YaHei", "SimHei", "SansSerif"
-        };
-        String[] available = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-        for (String want : preferred) {
-            for (String have : available) {
-                if (want.equalsIgnoreCase(have)) return new Font(have, style, size);
-            }
-        }
-        return new Font("WenQuanYi Micro Hei", style, size);
-    }
-
     private Font posterFont(int style, int size) {
         String testText = "主队客队请保存图片到相册用手机浏览器扫码打开";
         String[] fontFiles = {
@@ -206,25 +157,16 @@ public class LiveQrController {
                 Font base = Font.createFont(Font.TRUETYPE_FONT, f);
                 Font font = base.deriveFont(style, (float) size);
                 if (font.canDisplayUpTo(testText) == -1) {
-                    System.out.println("[LIVE_QR_FONT] using font file: " + fontPath);
                     return font;
                 }
-            } catch (Exception e) {
-                System.out.println("[LIVE_QR_FONT_ERROR] " + fontPath + " => " + e.getMessage());
+            } catch (Exception ignored) {
             }
-        }
-        String[] names = {"WenQuanYi Micro Hei", "Dialog", "SansSerif"};
-        for (String name : names) {
-            try {
-                Font font = new Font(name, style, size);
-                if (font.canDisplayUpTo(testText) == -1) return font;
-            } catch (Exception ignored) {}
         }
         return new Font("Dialog", style, size);
     }
 
     private String formatPosterTime(String matchTime) {
-        String t = safe(matchTime);
+        String t = matchTime == null ? "" : matchTime.trim();
         if (t.isEmpty()) return "";
         try {
             java.util.regex.Matcher m = java.util.regex.Pattern
@@ -236,13 +178,14 @@ public class LiveQrController {
                 String hm = m.group(4);
                 return String.format("%02d月%02d日 %s", month, day, hm);
             }
-        } catch (Exception ignored) {}
+        } catch (Exception ignored) {
+        }
         return t;
     }
 
     private String buildTitle(String homeTeam, String awayTeam) {
-        String home = safe(homeTeam);
-        String away = safe(awayTeam);
+        String home = homeTeam == null ? "" : homeTeam.trim();
+        String away = awayTeam == null ? "" : awayTeam.trim();
         if (!home.isEmpty() && !away.isEmpty()) return home + " VS " + away;
         if (!home.isEmpty()) return home;
         if (!away.isEmpty()) return away;
@@ -263,9 +206,5 @@ public class LiveQrController {
             throw new RuntimeException("wechat credentials not configured");
         }
         return token;
-    }
-
-    private String safe(String s) {
-        return s == null ? "" : s.trim();
     }
 }
