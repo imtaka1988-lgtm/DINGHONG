@@ -1,5 +1,6 @@
 package com.dinghong.controller.live;
 
+import com.dinghong.service.storage.UploadStorageService;
 import com.dinghong.service.wechat.WechatAccessTokenService;
 import com.dinghong.service.wechat.WechatMediaService;
 import com.google.zxing.BarcodeFormat;
@@ -7,7 +8,6 @@ import com.google.zxing.EncodeHintType;
 import com.google.zxing.client.j2se.MatrixToImageWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import javax.imageio.ImageIO;
@@ -16,8 +16,6 @@ import java.awt.*;
 import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 import java.io.*;
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.sql.*;
@@ -28,41 +26,24 @@ import java.util.Map;
 @RequestMapping("/admin/matches")
 public class LiveQrController {
 
-    private final String uploadDir;
-    private final String publicPrefix;
-    private final String playPrefix;
+    private final UploadStorageService storage;
     private final WechatAccessTokenService accessTokenService;
     private final WechatMediaService mediaService;
     private final DataSource dataSource;
 
-    public LiveQrController(@Value("${upload.live-qr-dir}") String uploadDir,
-                            @Value("${upload.live-qr-public-prefix}") String publicPrefix,
-                            @Value("${upload.live-play-prefix}") String playPrefix,
+    public LiveQrController(UploadStorageService storage,
                             WechatAccessTokenService accessTokenService,
                             WechatMediaService mediaService,
                             DataSource dataSource) {
-        this.uploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
-        this.publicPrefix = publicPrefix.endsWith("/") ? publicPrefix : publicPrefix + "/";
-        this.playPrefix = playPrefix;
+        this.storage = storage;
         this.accessTokenService = accessTokenService;
         this.mediaService = mediaService;
         this.dataSource = dataSource;
-
-        // 确保目录存在
-        File dir = new File(this.uploadDir);
-        if (!dir.exists() && !dir.mkdirs()) {
-            throw new IllegalStateException(
-                "无法创建 Live QR 上传目录: " + this.uploadDir + "。请检查配置和文件权限。"
-            );
-        }
     }
 
     @PostMapping("/{id}/qr")
     public String generateQr(@PathVariable Long id) {
         try {
-        File dir = new File(uploadDir);
-        if (!dir.exists()) dir.mkdirs();
-
             String streamKey;
             String homeTeam;
             String awayTeam;
@@ -95,20 +76,17 @@ public class LiveQrController {
                 }
             }
 
-        String playUrl = playPrefix + streamKey;
-
-            // 原始二维码文件（内部用）
-            File rawQrFile = new File(uploadDir + streamKey + "_raw.png");
-            // 最终公众号使用的海报图
-            File posterFile = new File(uploadDir + streamKey + ".png");
+            String playUrl = storage.getLivePlayPrefix() + streamKey;
+            File rawQrFile = storage.getLiveQrRawFile(streamKey);
+            File posterFile = storage.getLiveQrFile(streamKey);
 
             createQrPng(playUrl, rawQrFile);
             createPosterPng(rawQrFile, posterFile, homeTeam, awayTeam, matchTime);
 
-        String imageUrl = publicPrefix + posterFile.getName();
+            String imageUrl = storage.getLiveQrPublicPrefix() + posterFile.getName();
 
             String accessToken = getAccessToken();
-            String mediaId = uploadToWechat(accessToken, posterFile);
+            String mediaId = mediaService.uploadImagePng(accessToken, posterFile);
 
             if (mediaId == null || mediaId.trim().isEmpty()) {
                 return "error: 二维码海报已生成，但上传微信素材失败。图片地址：" + imageUrl;
@@ -154,17 +132,14 @@ public class LiveQrController {
         g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // 白底
         g.setColor(Color.WHITE);
         g.fillRect(0, 0, width, height);
 
-        // 顶部标题：主队 VS 客队
         String title = buildTitle(homeTeam, awayTeam);
         g.setColor(new Color(20, 20, 20));
         g.setFont(posterFont(Font.BOLD, 46));
         drawCenteredText(g, title, width, 120);
 
-        // 开赛时间：显示在队伍名下方
         String posterTime = formatPosterTime(matchTime);
         if (!posterTime.isEmpty()) {
             g.setColor(new Color(80, 80, 80));
@@ -172,13 +147,11 @@ public class LiveQrController {
             drawCenteredText(g, "开赛时间：" + posterTime, width, 175);
         }
 
-        // 中间提示文案
         g.setColor(new Color(55, 55, 55));
         g.setFont(posterFont(Font.PLAIN, 34));
         drawCenteredText(g, "保存图片到相册", width, 245);
         drawCenteredText(g, "用浏览器扫码打开", width, 300);
 
-        // 二维码外框卡片
         int cardW = 560;
         int cardH = 560;
         int cardX = (width - cardW) / 2;
@@ -197,9 +170,6 @@ public class LiveQrController {
         int qrY = cardY + (cardH - qrSize) / 2;
         g.drawImage(qr, qrX, qrY, qrSize, qrSize, null);
 
-        // 底部提示文案
-
-        // 底部强提示：红色大字，提醒不要在微信内识别
         g.setColor(new Color(220, 38, 38));
         g.setFont(posterFont(Font.BOLD, 58));
         drawCenteredText(g, "微信内识别无效!!!", width, 1045);
@@ -208,95 +178,58 @@ public class LiveQrController {
         ImageIO.write(canvas, "png", posterFile);
     }
 
-
     private Font pickFont(int style, int size) {
         String[] preferred = {
-                "WenQuanYi Micro Hei",
-                "WenQuanYi Micro Hei Mono",
-                "Droid Sans",
-                "Noto Sans CJK SC",
-                "Source Han Sans SC",
-                "Microsoft YaHei",
-                "SimHei",
-                "SansSerif"
+                "WenQuanYi Micro Hei", "WenQuanYi Micro Hei Mono",
+                "Droid Sans", "Noto Sans CJK SC", "Source Han Sans SC",
+                "Microsoft YaHei", "SimHei", "SansSerif"
         };
-
-        String[] available = GraphicsEnvironment
-                .getLocalGraphicsEnvironment()
-                .getAvailableFontFamilyNames();
-
+        String[] available = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
         for (String want : preferred) {
             for (String have : available) {
-                if (want.equalsIgnoreCase(have)) {
-                    return new Font(have, style, size);
-                }
+                if (want.equalsIgnoreCase(have)) return new Font(have, style, size);
             }
         }
-
         return new Font("WenQuanYi Micro Hei", style, size);
     }
 
-
     private Font posterFont(int style, int size) {
         String testText = "主队客队请保存图片到相册用手机浏览器扫码打开";
-
         String[] fontFiles = {
                 "/usr/share/fonts/google-droid/DroidSansFallback.ttf",
                 "/usr/share/fonts/wqy-microhei/wqy-microhei.ttc"
         };
-
         for (String fontPath : fontFiles) {
             try {
                 File f = new File(fontPath);
                 if (!f.exists()) continue;
-
                 Font base = Font.createFont(Font.TRUETYPE_FONT, f);
                 Font font = base.deriveFont(style, (float) size);
-
                 if (font.canDisplayUpTo(testText) == -1) {
                     System.out.println("[LIVE_QR_FONT] using font file: " + fontPath);
                     return font;
-                } else {
-                    System.out.println("[LIVE_QR_FONT] font cannot display all Chinese: " + fontPath);
                 }
             } catch (Exception e) {
                 System.out.println("[LIVE_QR_FONT_ERROR] " + fontPath + " => " + e.getMessage());
             }
         }
-
-        String[] names = {
-                "WenQuanYi Micro Hei",
-                "WenQuanYi Micro Hei Mono",
-                "Droid Sans",
-                "Dialog",
-                "SansSerif"
-        };
-
+        String[] names = {"WenQuanYi Micro Hei", "Dialog", "SansSerif"};
         for (String name : names) {
             try {
                 Font font = new Font(name, style, size);
-                if (font.canDisplayUpTo(testText) == -1) {
-                    System.out.println("[LIVE_QR_FONT] using font name: " + name);
-                    return font;
-                }
+                if (font.canDisplayUpTo(testText) == -1) return font;
             } catch (Exception ignored) {}
         }
-
-        System.out.println("[LIVE_QR_FONT] fallback to Dialog, Chinese may display incorrectly");
         return new Font("Dialog", style, size);
     }
-
 
     private String formatPosterTime(String matchTime) {
         String t = safe(matchTime);
         if (t.isEmpty()) return "";
-
-        // 兼容：2026-06-03 20:00 / 06-03 20:00 / 6-3 20:00
         try {
             java.util.regex.Matcher m = java.util.regex.Pattern
                     .compile("(?:(\\d{4})[-/年])?(\\d{1,2})[-/月](\\d{1,2})[日\\s]+(\\d{1,2}:\\d{2})")
                     .matcher(t);
-
             if (m.find()) {
                 int month = Integer.parseInt(m.group(2));
                 int day = Integer.parseInt(m.group(3));
@@ -304,18 +237,13 @@ public class LiveQrController {
                 return String.format("%02d月%02d日 %s", month, day, hm);
             }
         } catch (Exception ignored) {}
-
-        // 如果本来就是中文格式，就直接显示
         return t;
     }
 
     private String buildTitle(String homeTeam, String awayTeam) {
         String home = safe(homeTeam);
         String away = safe(awayTeam);
-
-        if (!home.isEmpty() && !away.isEmpty()) {
-            return home + " VS " + away;
-        }
+        if (!home.isEmpty() && !away.isEmpty()) return home + " VS " + away;
         if (!home.isEmpty()) return home;
         if (!away.isEmpty()) return away;
         return "直播入口二维码";
@@ -335,10 +263,6 @@ public class LiveQrController {
             throw new RuntimeException("wechat credentials not configured");
         }
         return token;
-    }
-
-    private String uploadToWechat(String token, File file) throws Exception {
-        return mediaService.uploadImagePng(token, file);
     }
 
     private String safe(String s) {
