@@ -32,14 +32,26 @@ mysql -u dinghong -p'your-password' dinghong < 顶红体育/greeting_migration.s
 
 > **注意：** 当前仓库没有完整 schema。如需从旧服务器迁移数据，请使用 `mysqldump` 导出完整结构。
 
-## 3. 克隆项目
+## 3. 配置部署脚本
+
+```bash
+# 从模板创建配置文件（模板不含真实密码）
+cp deploy_config.py.example deploy_config.py
+cp 顶红体育/deploy_config.sh.example 顶红体育/deploy_config.sh
+
+# 编辑配置文件，填入真实服务器 IP、密码、域名
+vi deploy_config.py
+vi 顶红体育/deploy_config.sh
+```
+
+## 4. 克隆项目
 
 ```bash
 git clone https://github.com/imtaka1988-lgtm/DINGHONG.git /data/dinghong
 cd /data/dinghong
 ```
 
-## 4. 配置环境变量
+## 5. 配置环境变量
 
 ```bash
 cp .env.example .env
@@ -61,7 +73,7 @@ vi .env
 - `BAIDU_SEARCH_KEY` — 联网搜索功能
 - `ODDS_API_KEY` — Odds API 数据
 
-## 5. 创建上传目录
+## 6. 创建上传目录
 
 ```bash
 mkdir -p /data/dinghong/upload/live_qr
@@ -72,7 +84,7 @@ chmod 755 /data/dinghong/cover
 chmod 755 /data/dinghong/article_images
 ```
 
-## 6. 编译打包
+## 7. 编译打包
 
 ```bash
 cd app/dinghong-api
@@ -81,7 +93,7 @@ mvn clean package -DskipTests
 
 编译成功后在 `target/` 目录找到 `dinghong-api-1.0.0.jar`。
 
-## 7. 启动服务
+## 8. 启动服务
 
 ### 方式 A：直接启动
 
@@ -102,7 +114,7 @@ systemctl start dinghong-api
 systemctl status dinghong-api
 ```
 
-## 8. 配置 Nginx
+## 9. 配置 Nginx
 
 ```bash
 cp 顶红体育/nginx_bt.conf /etc/nginx/conf.d/dinghong.conf
@@ -116,7 +128,7 @@ nginx -t && nginx -s reload
 - `admin.example.com` → 静态文件根目录 `/data/dinghong/admin`
 - `live.example.com` → 静态文件根目录 `/data/dinghong/admin/live`
 
-## 9. 验证
+## 10. 验证
 
 | 接口 | 预期 |
 |------|------|
@@ -130,7 +142,7 @@ curl -X POST "http://api.example.com/admin/login" \
   -d "username=admin&password=your-admin-password"
 ```
 
-## 10. 现有 SQL 文件清单
+## 11. 现有 SQL 文件清单
 
 | 文件 | 说明 |
 |------|------|

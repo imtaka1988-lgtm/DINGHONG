@@ -1,0 +1,50 @@
+# -*- coding: utf-8 -*-
+# ============================================================
+# 顶红公众号 — 部署配置模板
+#
+# 使用方法：
+#   cp deploy_config.py.example deploy_config.py
+#   然后编辑 deploy_config.py 填入实际值
+#
+# 注意：deploy_config.py 已加入 .gitignore，不会被提交到仓库。
+# ============================================================
+
+# ===== 服务器连接 =====
+HOST = ""
+PORT = 22
+USER = "root"
+PASS = ""
+
+# ===== 服务器路径 =====
+REMOTE_PROJECT_DIR = "/data/dinghong"
+REMOTE_API_DIR = "/data/dinghong/app/dinghong-api"
+REMOTE_SRC_CONTROLLER = "/data/dinghong/app/dinghong-api/src/main/java/com/dinghong/controller"
+
+# ===== 域名 =====
+API_DOMAIN = "api.5q.lol"
+ADMIN_DOMAIN = "admin.5q.lol"
+LIVE_DOMAIN = "live.5q.lol"
+
+# ===== 本地路径 =====
+LOCAL_BASE = r"c:\Users\Administrator\Desktop\HOTY-相关\顶红公众号\DINGHONG"
+
+# ===== 数据库 =====
+MYSQL_USER = "root"
+MYSQL_PASS = ""
+MYSQL_DB = "dinghong"
+
+# ===== 部署排除目录 =====
+EXCLUDE_DIRS = {"mysql", "logs", "backup", "target", ".git", "__pycache__", "node_modules", ".vscode"}
+EXCLUDE_EXT = {".pyc", ".log", ".tar.gz"}
+SYNC_DIRS = ["顶红体育", "app", "admin"]
+
+# ===== JDK 路径 =====
+JDK17_PATH = "/usr/lib/jvm/java-17-openjdk-17.0.19.0.10-1.0.2.1.al8.x86_64"
+
+# ===== SSH 连接超时 =====
+SSH_TIMEOUT = 15
+SSH_LONG_TIMEOUT = 300
+
+# ===== 编译/部署设置 =====
+API_JAR_NAME = "dinghong-api-1.0.0.jar"
+MAVEN_TIMEOUT = 300

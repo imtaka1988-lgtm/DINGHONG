@@ -1,0 +1,17 @@
+# ============================================================
+# 顶红公众号 — Shell 层部署配置模板
+#
+# 使用方法：
+#   cp deploy_config.sh.example deploy_config.sh
+#   然后编辑 deploy_config.sh 填入实际值
+#
+# 注意：deploy_config.sh 已加入 .gitignore，不会被提交到仓库。
+# ============================================================
+
+# ===== 域名 =====
+API_DOMAIN="api.5q.lol"        # ← 替换为新服务器域名
+ADMIN_DOMAIN="admin.5q.lol"
+LIVE_DOMAIN="live.5q.lol"
+
+# ===== 服务器路径 =====
+PROJECT_DIR="/data/dinghong"
