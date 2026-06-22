@@ -1,0 +1,117 @@
+                            # ============================================================
+# 顶红体育 — Nginx 配置模板
+# 部署时复制到 /etc/nginx/conf.d/dinghong.conf 并修改域名
+# ============================================================
+
+limit_req_zone $binary_remote_addr zone=admin:10m rate=10r/s;
+limit_req_zone $binary_remote_addr zone=api:10m rate=30r/s;
+
+# ===== api.5q.lol =====
+server {
+    listen 80;
+    server_name api.5q.lol;   # ← 替换为实际 API 域名
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /admin/ {
+        limit_req zone=admin burst=20 nodelay;
+        proxy_pass http://127.0.0.1:8080/admin/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /editor/ {
+        limit_req zone=admin burst=20 nodelay;
+        proxy_pass http://127.0.0.1:8080/editor/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /upload/ {
+        alias /data/dinghong/upload/;
+    }
+}
+
+# ===== admin.5q.lol =====
+server {
+    listen 80;
+    server_name admin.5q.lol;  # ← 替换为实际后台域名
+
+    root /data/dinghong/admin;
+    index login.html;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # 后台接口代理（必须配置，否则登录请求会被静态文件拦截）
+    location /admin/ {
+        proxy_pass http://127.0.0.1:8080/admin/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /editor/ {
+        proxy_pass http://127.0.0.1:8080/editor/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+
+    location /upload/ {
+        alias /data/dinghong/upload/;
+    }
+
+    location / {
+        try_files $uri $uri/ /login.html;
+    }
+}
+
+# ===== live.5q.lol =====
+server {
+    listen 80;
+    server_name live.5q.lol;   # ← 替换为实际直播域名
+
+    root /data/dinghong/admin/live;
+    index play.html;
+
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-Content-Type-Options "nosniff" always;
+
+    # 直播代理 API
+    location /live/ {
+        proxy_pass http://127.0.0.1:8080/live/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_request_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+
+        set $cors_origin "";
+        if ($http_origin ~* "^https?://(live\.5q\.lol|admin\.5q\.lol)$") {
+            set $cors_origin $http_origin;
+        }
+        add_header Access-Control-Allow-Origin $cors_origin always;
+        add_header Access-Control-Allow-Methods 'GET,OPTIONS' always;
+    }
+
+    # 直播首页自动跳转到 play.html
+    location = / {
+        return 302 /play.html;
+    }
+
+    location / {
+        try_files $uri $uri/ /play.html;
+    }
+}
