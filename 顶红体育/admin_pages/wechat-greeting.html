@@ -1,174 +1,115 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>顶红体育后台 - 每日欢迎语配置</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顶红体育后台 — 每日欢迎语</title>
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="css/common.css" rel="stylesheet">
 <style>
-.preview-img{max-width:100%;max-height:200px;border-radius:12px;border:1px solid #ddd;background:#fff;object-fit:contain;}
-.preview-box{min-height:100px;border:1px dashed #ccc;border-radius:12px;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#888;padding:10px;}
-.card-switch{display:flex;align-items:center;gap:10px;margin-bottom:15px;}
-.switch-label{font-size:14px;font-weight:500;}
+  .preview-img{max-width:100%;max-height:200px;border-radius:12px;border:1px solid #ddd;object-fit:contain;}
+  .preview-box{min-height:100px;border:2px dashed #ddd;border-radius:12px;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#888;padding:10px;}
+  .switch-toggle{display:flex;align-items:center;gap:12px;}
 </style>
 </head>
-
 <body>
-<div class="container-fluid px-4 py-4">
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="page-title mb-1">💬 每日欢迎语配置</h2>
-        <div class="text-muted">用户每天首次在公众号发消息或点菜单时，自动推送欢迎语（先发文字，再发二维码图片）</div>
+<nav class="nav-top">
+  <div class="brand">顶红<span>体育</span></div>
+  <div class="nav-links">
+    <a class="nav-btn" href="matches.html">比赛管理</a>
+    <a class="nav-btn" href="ad-config.html">广告配置</a>
+    <a class="nav-btn active" href="wechat-greeting.html">欢迎语</a>
+    <a class="nav-btn" href="articles.html">AI编辑部</a>
+    <a class="nav-btn" href="#" onclick="dhLogout()">退出</a>
+  </div>
+</nav>
+
+<div class="main-container">
+  <div class="page-header">
+    <h2>💬 每日欢迎语配置</h2>
+    <div class="subtitle">用户每天首次互动时自动推送欢迎语（文字 + 二维码图片）</div>
+  </div>
+
+  <div class="card p-3 mb-4" style="background:#f0f9ff;border:none;border-radius:8px;">
+    <small><b>工作原理：</b>用户每天首次在公众号互动（发消息/点菜单）时，系统通过微信客服消息推送一条文字 + 一张二维码图片。图片支持直链 URL，系统会自动上传到微信。</small>
+  </div>
+
+  <div class="card main-card p-3 mb-4">
+    <h5 class="mb-4" style="font-weight:600;">⚙️ 设置</h5>
+    <div class="switch-toggle mb-4">
+      <span style="font-weight:600;">功能开关：</span>
+      <div class="form-check form-switch m-0">
+        <input class="form-check-input" type="checkbox" id="enabled" style="width:48px;height:24px;">
+      </div>
+      <span class="text-muted" id="enabledLabel">关闭后不再自动推送每日欢迎语</span>
     </div>
-    <div>
-        <a class="btn btn-outline-primary" href="matches.html">比赛管理</a>
-        <a class="btn btn-outline-success" href="ad-config.html">广告配置</a>
-        <a class="btn btn-info" href="wechat-greeting.html">每日欢迎语</a>
-        <a class="btn btn-outline-primary" href="articles.html">AI编辑部</a>
-        <button class="btn btn-outline-secondary" onclick="dhLogout()">退出</button>
-    </div>
-</div>
-
-<div class="alert alert-info">
-    <b>工作原理：</b>用户每天首次在公众号互动（发消息/点菜单）时，系统会自动通过微信客服消息推送一条文字+一张二维码图片。<br>
-    <b>二维码图片：</b>支持填写图片直链URL（如 <code>https://example.com/qr.jpg</code>），系统会自动上传到微信并发送。每次更换链接即可。<br>
-    <b>欢迎文字：</b>显示在二维码上方，可自由编辑。
-</div>
-
-<div class="card main-card p-3 mb-4">
-    <h5 class="mb-4">设置</h5>
-
-    <div class="card-switch mb-4">
-        <span class="switch-label">功能开关：</span>
-        <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" id="enabled" style="width:48px;height:24px;">
-        </div>
-        <span class="text-muted" id="enabledLabel">关闭后不再自动推送每日欢迎语</span>
-    </div>
-
     <div class="row g-3">
-        <div class="col-md-12">
-            <label class="form-label">欢迎文字</label>
-            <textarea class="form-control" id="greetingText" rows="3" placeholder="例如：欢迎加入顶红体育交流群，扫码入群领取每日精选赛事分析"></textarea>
-            <div class="small-text mt-1">用户每天首次互动时先看到这段文字，再看到下方二维码图片。</div>
-        </div>
-
-        <div class="col-md-12">
-            <label class="form-label">二维码图片链接</label>
-            <input class="form-control" id="qrImageUrl" placeholder="https://your-server.com/qrcode.jpg">
-            <div class="small-text mt-1">填写图片直链URL。每次更换微信群二维码时，只需更新这个链接即可。</div>
-        </div>
+      <div class="col-md-12">
+        <label class="form-label fw-bold">欢迎文字</label>
+        <textarea class="form-control" id="greetingText" rows="3" placeholder="例如：欢迎加入顶红体育交流群，扫码入群领取每日精选赛事分析" style="border-radius:8px;"></textarea>
+        <small class="text-muted">用户每天首次互动时先看到这段文字</small>
+      </div>
+      <div class="col-md-12">
+        <label class="form-label fw-bold">二维码图片链接</label>
+        <input class="form-control" id="qrImageUrl" placeholder="https://your-server.com/qrcode.jpg" style="border-radius:8px;">
+        <small class="text-muted">填写图片直链 URL，每次更换二维码只需更新此链接</small>
+      </div>
     </div>
-
     <div class="mt-4 d-flex gap-2">
-        <button class="btn btn-success" onclick="saveConfig()">保存配置</button>
-        <button class="btn btn-secondary" onclick="loadConfig()">重新读取</button>
+      <button class="btn btn-success" onclick="saveConfig()">💾 保存配置</button>
+      <button class="btn btn-secondary" onclick="loadConfig()">🔄 重新读取</button>
     </div>
+    <div class="mt-3" id="result"></div>
+  </div>
 
-    <div class="mt-3 code-text" id="result"></div>
-</div>
-
-<div class="card main-card p-3">
-    <h5 class="mb-3">预览效果</h5>
+  <div class="card main-card p-3">
+    <h5 class="mb-3" style="font-weight:600;">👁 预览效果</h5>
     <div class="row">
-        <div class="col-md-6">
-            <b>文字预览</b>
-            <div class="p-3 mt-2" style="background:#f5f5f5;border-radius:8px;white-space:pre-wrap;min-height:60px;" id="textPreview"></div>
-        </div>
-        <div class="col-md-6">
-            <b>二维码预览</b>
-            <div class="preview-box mt-2" id="qrPreview">暂无图片</div>
-        </div>
+      <div class="col-md-6">
+        <b>文字预览</b>
+        <div class="p-3 mt-2" style="background:#f5f5f5;border-radius:8px;white-space:pre-wrap;min-height:60px;" id="textPreview"></div>
+      </div>
+      <div class="col-md-6">
+        <b>二维码预览</b>
+        <div class="preview-box mt-2" id="qrPreview">暂无图片</div>
+      </div>
     </div>
-</div>
-
+  </div>
 </div>
 
 <script src="js/common.js"></script>
-
 <script>
-function val(id){
-    var el = document.getElementById(id);
-    return el ? el.value.trim() : '';
-}
-
-function setVal(id, v){
-    var el = document.getElementById(id);
-    if(el) el.value = v || '';
-}
-
-function setResult(text, ok){
-    var el = document.getElementById('result');
-    if(!el) return;
-    el.innerText = text || '';
-    el.className = ok ? 'mt-3 code-text text-success' : 'mt-3 code-text text-danger';
-}
-
+function setResult(text,ok){var el=document.getElementById('result');if(!el)return;el.innerText=text||'';el.className='mt-3 '+(ok?'text-success':'text-danger');el.style.fontSize='13px';}
 function loadConfig(){
-    DH_API.getJson('/admin/wechat-greeting?t=' + Date.now())
-    .then(function(c){
-        setVal('qrImageUrl', c.qrImageUrl || '');
-        setVal('greetingText', c.greetingText || '');
-        document.getElementById('enabled').checked = c.enabled !== false;
-        refreshPreview();
-        setResult('配置已读取', true);
-    })
-    .catch(function(e){
-        setResult('读取失败: ' + e.message, false);
-    });
+  DH_API.getJson('/admin/wechat-greeting?t='+Date.now())
+  .then(function(c){
+    setVal('qrImageUrl',c.qrImageUrl||'');setVal('greetingText',c.greetingText||'');
+    document.getElementById('enabled').checked=c.enabled!==false;refreshPreview();setResult('配置已读取',true);
+  }).catch(function(e){setResult('读取失败: '+e.message,false);});
 }
-
 function saveConfig(){
-    var body = {
-        qrImageUrl: val('qrImageUrl'),
-        greetingText: val('greetingText'),
-        enabled: document.getElementById('enabled').checked
-    };
-
-    DH_API.putJson('/admin/wechat-greeting', body)
-    .then(function(text){
-        var resp = JSON.parse(text);
-        if(resp.success){
-            refreshPreview();
-            setResult(resp.message, true);
-        } else {
-            setResult(resp.message, false);
-        }
-    })
-    .catch(function(e){
-        setResult('保存失败: ' + e.message, false);
-    });
+  var body={qrImageUrl:val('qrImageUrl'),greetingText:val('greetingText'),enabled:document.getElementById('enabled').checked};
+  DH_API.putJson('/admin/wechat-greeting',body)
+  .then(function(text){var resp=JSON.parse(text);refreshPreview();setResult(resp.message,resp.success);})
+  .catch(function(e){setResult('保存失败: '+e.message,false);});
 }
-
 function refreshPreview(){
-    var text = val('greetingText');
-    var qrUrl = val('qrImageUrl');
-    var tp = document.getElementById('textPreview');
-    if(tp){
-        tp.innerText = text || '（未设置欢迎文字）';
-    }
-    var qp = document.getElementById('qrPreview');
-    if(!qp) return;
-    if(!qrUrl){
-        qp.innerHTML = '暂无图片';
-        return;
-    }
-    qp.innerHTML = '<img class="preview-img" src="' + escapeHtml(qrUrl) + '?v=' + Date.now() + '" onerror="this.outerHTML=\'<span style=color:#d33>图片加载失败，请检查链接是否可访问</span>\'">';
+  var text=val('greetingText'),qrUrl=val('qrImageUrl');
+  var tp=document.getElementById('textPreview');if(tp)tp.innerText=text||'（未设置欢迎文字）';
+  var qp=document.getElementById('qrPreview');if(!qp)return;
+  if(!qrUrl){qp.innerHTML='暂无图片';return;}
+  qp.innerHTML='<img class="preview-img" src="'+escapeHtml(qrUrl)+'?v='+Date.now()+'" onerror="this.outerHTML=\'<span style=color:#c0392b>图片加载失败，请检查链接</span>\'">';
 }
-
-document.getElementById('enabled').addEventListener('change', function(){
-    var lbl = document.getElementById('enabledLabel');
-    if(lbl){
-        lbl.innerText = this.checked ? '已开启，用户每天首次互动将收到欢迎语' : '已关闭，不再自动推送每日欢迎语';
-    }
+document.getElementById('enabled').addEventListener('change',function(){
+  var lbl=document.getElementById('enabledLabel');
+  if(lbl)lbl.innerText=this.checked?'已开启，用户每天首次互动将收到欢迎语':'已关闭，不再自动推送欢迎语';
 });
-
 loadConfig();
 </script>
-
 </body>
 </html>
+</write_to_file>

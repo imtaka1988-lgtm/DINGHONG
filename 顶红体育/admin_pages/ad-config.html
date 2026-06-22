@@ -1,202 +1,119 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>顶红体育后台 - 直播广告配置</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顶红体育后台 — 直播广告配置</title>
 <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, max-age=0">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="css/common.css" rel="stylesheet">
 <style>
-.preview-img,.preview-video{max-width:100%;max-height:170px;border-radius:12px;border:1px solid #ddd;background:#fff;object-fit:contain;}
-.preview-video{background:#000;}
-.preview-box{min-height:92px;border:1px dashed #ccc;border-radius:12px;background:#fafafa;display:flex;align-items:center;justify-content:center;color:#888;padding:10px;}
+  .preview-img, .preview-video { max-width:100%; max-height:170px; border-radius:12px; border:1px solid #ddd; background:#fff; object-fit:contain; }
+  .preview-video { background:#000; }
+  .preview-box { min-height:92px; border:2px dashed #ddd; border-radius:12px; background:#fafafa; display:flex; align-items:center; justify-content:center; color:#888; padding:10px; }
 </style>
 </head>
-
 <body>
-<div class="container-fluid px-4 py-4">
 
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-        <h2 class="page-title mb-1">📣 直播广告配置</h2>
-        <div class="text-muted">管理 live.5q.lol 播放页广告图 / MP4 视频、动态推荐图；保存后前台约 1 分钟内自动刷新</div>
-    </div>
-    <div>
-        <a class="btn btn-outline-primary" href="matches.html">比赛管理</a>
-        <a class="btn btn-success" href="ad-config.html">广告配置</a>
-        <a class="btn btn-outline-info" href="wechat-greeting.html">每日欢迎语</a>
-        <a class="btn btn-outline-primary" href="articles.html">AI编辑部</a>
-        <button class="btn btn-outline-secondary" onclick="dhLogout()">退出</button>
-    </div>
-</div>
+<nav class="nav-top">
+  <div class="brand">顶红<span>体育</span></div>
+  <div class="nav-links">
+    <a class="nav-btn" href="matches.html">比赛管理</a>
+    <a class="nav-btn active" href="ad-config.html">广告配置</a>
+    <a class="nav-btn" href="wechat-greeting.html">欢迎语</a>
+    <a class="nav-btn" href="articles.html">AI编辑部</a>
+    <a class="nav-btn" href="#" onclick="dhLogout()">退出</a>
+  </div>
+</nav>
 
-<div class="alert alert-info">
-    图片或 MP4 视频建议使用 HTTPS 直链。直播页读取 <b>admin/live/ad_config.json</b> 和 <b>admin/live/banner.txt</b>，后台保存接口会同步写入这两个文件。
-</div>
+<div class="main-container">
+  <div class="page-header">
+    <h2>📣 直播广告配置</h2>
+    <div class="subtitle">管理直播页广告素材，保存后约 1 分钟内自动刷新</div>
+  </div>
 
-<div class="card main-card p-3 mb-4">
-    <h5 class="mb-3">广告位地址</h5>
+  <div class="card p-3 mb-4" style="background:#fff3cd;border:none;border-radius:8px;">
+    <small>素材链接建议使用 HTTPS 直链。直播页读取 <b>admin/live/ad_config.json</b> 和 <b>admin/live/banner.txt</b>。</small>
+  </div>
 
+  <div class="card main-card p-3 mb-4">
+    <h5 class="mb-3" style="font-weight:600;">广告位地址</h5>
     <div class="row g-3">
-        <div class="col-md-6">
-            <label class="form-label">顶部广告 top</label>
-            <input class="form-control" id="top" placeholder="https://...">
-            <div class="small-text mt-1">显示在直播播放器上方，适合主视觉图。</div>
-        </div>
-
-        <div class="col-md-6">
-            <label class="form-label">中部广告 ad1</label>
-            <input class="form-control" id="ad1" placeholder="https://...">
-            <div class="small-text mt-1">显示在观赛提示下方。</div>
-        </div>
-
-        <div class="col-md-6">
-            <label class="form-label">中部广告 ad2</label>
-            <input class="form-control" id="ad2" placeholder="https://www.bks32.vip:30000/entry/register/?i_code=8839661">
-            <div class="small-text mt-1">第二个中部广告位，支持图片或 MP4 视频直链，可留空。</div>
-        </div>
-
-        <div class="col-md-6">
-            <label class="form-label">底部广告 bottom</label>
-            <input class="form-control" id="bottom" placeholder="https://www.bks32.vip:30000/entry/register/?i_code=8839661">
-            <div class="small-text mt-1">显示在页面底部、固定按钮上方，支持图片或 MP4 视频直链。</div>
-        </div>
-
-        <div class="col-md-12">
-            <label class="form-label">动态推荐 banner.txt</label>
-            <input class="form-control" id="banner" placeholder="https://...">
-            <div class="small-text mt-1">保留原有动态推荐逻辑，直播页每 15 秒检查一次。</div>
-        </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">顶部广告 top</label>
+        <input class="form-control" id="top" placeholder="https://...">
+        <small class="text-muted">显示在直播播放器上方，适合主视觉图</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">中部广告 ad1</label>
+        <input class="form-control" id="ad1" placeholder="https://...">
+        <small class="text-muted">显示在观赛提示下方</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">中部广告 ad2</label>
+        <input class="form-control" id="ad2" placeholder="https://...">
+        <small class="text-muted">第二个中部广告位，支持图片或 MP4</small>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label fw-bold">底部广告 bottom</label>
+        <input class="form-control" id="bottom" placeholder="https://...">
+        <small class="text-muted">显示在页面底部、固定按钮上方</small>
+      </div>
+      <div class="col-md-12">
+        <label class="form-label fw-bold">动态推荐 banner.txt</label>
+        <input class="form-control" id="banner" placeholder="https://...">
+        <small class="text-muted">每 15 秒检查一次动态推荐</small>
+      </div>
     </div>
-
     <div class="mt-4 d-flex gap-2">
-        <button class="btn btn-success" onclick="saveConfig()">保存配置</button>
-        <button class="btn btn-secondary" onclick="loadConfig()">重新读取</button>
-        <button class="btn btn-outline-danger" onclick="clearAll()">清空全部</button>
+      <button class="btn btn-success" onclick="saveConfig()">💾 保存配置</button>
+      <button class="btn btn-secondary" onclick="loadConfig()">🔄 重新读取</button>
+      <button class="btn btn-outline-danger" onclick="clearAll()">🗑 清空全部</button>
     </div>
+    <div class="mt-3" id="result"></div>
+  </div>
 
-    <div class="mt-3 code-text" id="result"></div>
-</div>
-
-<div class="card main-card p-3">
+  <div class="card main-card p-3">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="mb-0">广告预览</h5>
-        <button class="btn btn-outline-primary btn-sm" onclick="refreshPreview()">刷新预览</button>
+      <h5 style="font-weight:600;margin:0;">广告预览</h5>
+      <button class="btn btn-outline-primary btn-sm" onclick="refreshPreview()">刷新预览</button>
     </div>
-
     <div class="row g-3">
-        <div class="col-md-6">
-            <b>顶部 top</b>
-            <div class="preview-box mt-2" id="topBox">暂无素材</div>
-        </div>
-        <div class="col-md-6">
-            <b>中部 ad1</b>
-            <div class="preview-box mt-2" id="ad1Box">暂无素材</div>
-        </div>
-        <div class="col-md-6">
-            <b>中部 ad2</b>
-            <div class="preview-box mt-2" id="ad2Box">暂无素材</div>
-        </div>
-        <div class="col-md-6">
-            <b>底部 bottom</b>
-            <div class="preview-box mt-2" id="bottomBox">暂无素材</div>
-        </div>
-        <div class="col-md-12">
-            <b>动态推荐 banner</b>
-            <div class="preview-box mt-2" id="bannerBox">暂无素材</div>
-        </div>
+      <div class="col-md-6"><b>顶部 top</b><div class="preview-box mt-2" id="topBox">暂无素材</div></div>
+      <div class="col-md-6"><b>中部 ad1</b><div class="preview-box mt-2" id="ad1Box">暂无素材</div></div>
+      <div class="col-md-6"><b>中部 ad2</b><div class="preview-box mt-2" id="ad2Box">暂无素材</div></div>
+      <div class="col-md-6"><b>底部 bottom</b><div class="preview-box mt-2" id="bottomBox">暂无素材</div></div>
+      <div class="col-md-12"><b>动态推荐 banner</b><div class="preview-box mt-2" id="bannerBox">暂无素材</div></div>
     </div>
-</div>
-
+  </div>
 </div>
 
 <script src="js/common.js"></script>
-
 <script>
-function isVideoUrl(url){
-    var clean = (url || '').split('#')[0].split('?')[0].toLowerCase();
-    return /\.(mp4|webm|ogg|m4v|mov)$/.test(clean);
-}
-
+function isVideoUrl(url){ return /\.(mp4|webm|ogg|m4v|mov)$/.test((url||'').split('#')[0].split('?')[0].toLowerCase()); }
 function renderMedia(boxId, url){
-    var box = document.getElementById(boxId);
-    if(!box) return;
-    url = (url || '').trim();
-
-    if(!url){
-        box.innerHTML = '暂无素材';
-        return;
-    }
-
-    var safe = escapeHtml(url);
-
-    if(isVideoUrl(url)){
-        box.innerHTML = '<video class="preview-video" src="' + safe + '" controls muted playsinline preload="metadata">视频预览失败</video>';
-    } else {
-        box.innerHTML = '<img class="preview-img" src="' + safe + '?v=' + Date.now() + '" onerror="this.outerHTML=\'素材加载失败\'">';
-    }
+  var box=document.getElementById(boxId);if(!box)return;url=(url||'').trim();
+  if(!url){box.innerHTML='暂无素材';return;}
+  var safe=escapeHtml(url);
+  box.innerHTML=isVideoUrl(url)?'<video class="preview-video" src="'+safe+'" controls muted playsinline preload="metadata">视频预览失败</video>':'<img class="preview-img" src="'+safe+'?v='+Date.now()+'" onerror="this.outerHTML=\'素材加载失败\'">';
 }
-
-function refreshPreview(){
-    renderMedia('topBox', val('top'));
-    renderMedia('ad1Box', val('ad1'));
-    renderMedia('ad2Box', val('ad2'));
-    renderMedia('bottomBox', val('bottom'));
-    renderMedia('bannerBox', val('banner'));
-}
-
-function setResult(text, ok){
-    var el = document.getElementById('result');
-    if(!el) return;
-    el.innerText = text || '';
-    el.className = ok ? 'mt-3 code-text text-success' : 'mt-3 code-text text-danger';
-}
-
+function refreshPreview(){['top','ad1','ad2','bottom','banner'].forEach(function(k){renderMedia(k+'Box',val(k));});}
+function setResult(text,ok){var el=document.getElementById('result');if(!el)return;el.innerText=text||'';el.className='mt-3 '+(ok?'text-success':'text-danger');el.style.fontSize='13px';}
 function loadConfig(){
-    DH_API.getJson('/admin/live/ad-config?t=' + Date.now())
-    .then(function(c){
-        setVal('top', c.top);
-        setVal('ad1', c.ad1);
-        setVal('ad2', c.ad2);
-        setVal('bottom', c.bottom);
-        setVal('banner', c.banner);
-        refreshPreview();
-        setResult('配置已读取', true);
-    })
-    .catch(function(e){
-        setResult(e.message, false);
-    });
+  DH_API.getJson('/admin/live/ad-config?t='+Date.now())
+  .then(function(c){['top','ad1','ad2','bottom','banner'].forEach(function(k){setVal(k,c[k]||'');});refreshPreview();setResult('配置已读取',true);})
+  .catch(function(e){setResult(e.message,false);});
 }
-
 function saveConfig(){
-    var body = {
-        top: val('top'),
-        ad1: val('ad1'),
-        ad2: val('ad2'),
-        bottom: val('bottom'),
-        banner: val('banner')
-    };
-
-    DH_API.putJson('/admin/live/ad-config', body)
-    .then(function(t){
-        refreshPreview();
-        setResult('保存成功。前台播放页会自动读取新配置。', true);
-    })
-    .catch(function(e){
-        setResult(e.message, false);
-    });
+  var body={top:val('top'),ad1:val('ad1'),ad2:val('ad2'),bottom:val('bottom'),banner:val('banner')};
+  DH_API.putJson('/admin/live/ad-config',body).then(function(t){refreshPreview();setResult('保存成功',true);})
+  .catch(function(e){setResult(e.message,false);});
 }
-
-function clearAll(){
-    if(!dhConfirm('确定清空全部广告图地址吗？')) return;
-    ['top','ad1','ad2','bottom','banner'].forEach(function(id){ setVal(id, ''); });
-    refreshPreview();
-}
-
+function clearAll(){if(!dhConfirm('确定清空全部？'))return;['top','ad1','ad2','bottom','banner'].forEach(function(k){setVal(k,'');});refreshPreview();}
 loadConfig();
 </script>
-
 </body>
 </html>
+</write_to_file>

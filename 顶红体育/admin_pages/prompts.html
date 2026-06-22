@@ -1,89 +1,75 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>Prompt管理中心</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>顶红体育后台 — Prompt管理中心</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="css/common.css" rel="stylesheet">
 </head>
+<body>
 
-<body class="bg-light">
+<nav class="nav-top">
+  <div class="brand">顶红<span>体育</span></div>
+  <div class="nav-links">
+    <a class="nav-btn" href="matches.html">比赛管理</a>
+    <a class="nav-btn" href="ad-config.html">广告配置</a>
+    <a class="nav-btn" href="wechat-greeting.html">欢迎语</a>
+    <a class="nav-btn" href="articles.html">AI编辑部</a>
+    <a class="nav-btn active" href="prompts.html">人设管理</a>
+    <a class="nav-btn" href="#" onclick="dhLogout()">退出</a>
+  </div>
+</nav>
 
-<div class="container mt-4">
+<div class="main-container">
+  <div class="page-header">
+    <h2>🧠 Prompt管理中心</h2>
+    <div class="subtitle">管理 AI 写作 Prompt 和系统提示词</div>
+  </div>
 
-<h2 class="mb-4">🧠 Prompt管理中心</h2>
-
-<div class="mb-3">
-    <a class="btn btn-secondary" href="matches.html">比赛管理</a>
-    <a class="btn btn-secondary" href="articles.html">AI编辑部</a>
-</div>
-
-<div id="list"></div>
-
+  <div id="list"></div>
 </div>
 
 <script src="js/common.js"></script>
-
 <script>
-
 function load(){
-    DH_API.getJson('/admin/prompts')
-    .then(function(data){
-        var html = '';
-
-        data.forEach(function(p){
-            html +=
-            '<div class="card mb-3">' +
-                '<div class="card-header">' +
-                    '<b>' + (p.name || '') + '</b>' +
-                    ' (' + (p.code || '') + ')' +
-                '</div>' +
-                '<div class="card-body">' +
-                    '<textarea class="form-control mb-2" rows="8" id="c' + p.id + '">' + (p.content || '') + '</textarea>' +
-                    '<select class="form-control mb-2" id="s' + p.id + '">' +
-                        '<option value="ENABLED" ' + (p.status=='ENABLED'?'selected':'') + '>ENABLED</option>' +
-                        '<option value="DISABLED" ' + (p.status=='DISABLED'?'selected':'') + '>DISABLED</option>' +
-                    '</select>' +
-                    '<button class="btn btn-success" onclick="save(' + p.id + ',\'' + (p.name || '') + '\')">保存</button>' +
-                '</div>' +
-            '</div>';
-        });
-
-        var list = document.getElementById('list');
-        if(list) list.innerHTML = html;
-    })
-    .catch(function(e){
-        dhAlert('Prompt列表加载失败', 'error');
+  DH_API.getJson('/admin/prompts')
+  .then(function(data){
+    var html = '';
+    data.forEach(function(p){
+      html +=
+      '<div class="card main-card p-3 mb-3">' +
+        '<div class="card-header" style="font-weight:600;">' +
+          escapeHtml(p.name || '') + ' (' + escapeHtml(p.code || '') + ')' +
+        '</div>' +
+        '<div class="card-body">' +
+          '<textarea class="form-control mb-2" rows="8" id="c' + p.id + '" style="border-radius:8px;">' + (p.content || '') + '</textarea>' +
+          '<select class="form-control mb-2" id="s' + p.id + '" style="border-radius:6px;">' +
+            '<option value="ENABLED" ' + (p.status=='ENABLED'?'selected':'') + '>🟢 ENABLED（启用）</option>' +
+            '<option value="DISABLED" ' + (p.status=='DISABLED'?'selected':'') + '>🔴 DISABLED（禁用）</option>' +
+          '</select>' +
+          '<button class="btn btn-success" onclick="save(' + p.id + ',\'' + escapeHtml(p.name || '') + '\')">💾 保存</button>' +
+        '</div>' +
+      '</div>';
     });
+    var list = document.getElementById('list');
+    if(list) list.innerHTML = html;
+  })
+  .catch(function(e){ dhAlert('加载失败', 'error'); });
 }
 
 function save(id, name){
-    if(!DH_API.checkId(id)) return;
-
-    var contentEl = document.getElementById('c' + id);
-    var statusEl = document.getElementById('s' + id);
-
-    if(!contentEl || !statusEl){
-        dhAlert('表单元素未找到', 'error');
-        return;
-    }
-
-    DH_API.putJson('/admin/prompts/' + id, {
-        name: name,
-        content: contentEl.value,
-        status: statusEl.value
-    })
-    .then(function(t){
-        dhAlert('保存成功', 'success');
-    })
-    .catch(function(e){
-        dhAlert('保存失败', 'error');
-    });
+  if(!DH_API.checkId(id)) return;
+  var contentEl = document.getElementById('c' + id);
+  var statusEl = document.getElementById('s' + id);
+  if(!contentEl || !statusEl){ dhAlert('表单元素未找到', 'error'); return; }
+  DH_API.putJson('/admin/prompts/' + id, { name: name, content: contentEl.value, status: statusEl.value })
+  .then(function(t){ dhAlert('保存成功', 'success'); })
+  .catch(function(e){ dhAlert('保存失败', 'error'); });
 }
 
 load();
-
 </script>
-
 </body>
 </html>
+</write_to_file>

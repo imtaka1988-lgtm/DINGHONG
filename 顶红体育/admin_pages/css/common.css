@@ -1,149 +1,278 @@
-/* ============================================
-   顶红体育后台 — 公共样式
-   ============================================ */
+/* ========================================
+   顶红体育后台 — 统一样式
+   ======================================== */
 
-/* 基础布局 */
+/* 品牌色 */
+:root {
+    --dh-red: #c0392b;
+    --dh-red-light: #e74c3c;
+    --dh-dark: #1a1a2e;
+    --dh-dark-card: #16213e;
+    --dh-accent: #e94560;
+    --dh-gold: #f39c12;
+    --dh-bg: #f0f2f5;
+}
+
+/* 基础背景 */
 body {
-  background: #f5f6f8;
-  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    background: var(--dh-bg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+/* 顶部导航栏 */
+.nav-top {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+.nav-top .brand {
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+.nav-top .brand span { color: var(--dh-red-light); }
+.nav-top .nav-links { display: flex; gap: 8px; }
+.nav-btn {
+    padding: 6px 16px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.2);
+    background: rgba(255,255,255,0.08);
+    color: #ccc;
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.2s;
+}
+.nav-btn:hover, .nav-btn.active {
+    background: var(--dh-red);
+    color: #fff;
+    border-color: var(--dh-red);
+}
+
+/* 主容器 */
+.main-container {
+    padding: 24px;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 /* 页面标题 */
-.page-title {
-  font-weight: 800;
+.page-header {
+    margin-bottom: 24px;
+}
+.page-header h2 {
+    font-weight: 700;
+    color: var(--dh-dark);
+    margin: 0;
+}
+.page-header .subtitle {
+    color: #888;
+    font-size: 13px;
+    margin-top: 4px;
 }
 
-/* 卡片样式 */
-.main-card,
-.stat-card,
+/* 卡片增强 */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+    transition: box-shadow 0.2s;
+}
+.card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.card-header {
+    background: #fff;
+    border-bottom: 1px solid #eee;
+    border-radius: 12px 12px 0 0 !important;
+    font-weight: 600;
+}
+.main-card {
+    border-left: 4px solid var(--dh-red);
+}
+
+/* 比赛卡片 */
 .match-card {
-  border: 0;
-  border-radius: 16px;
-  box-shadow: 0 5px 18px rgba(0, 0, 0, .06);
+    border-radius: 10px;
+    transition: transform 0.15s;
+}
+.match-card:hover {
+    transform: translateY(-1px);
+}
+.match-card .qr-img {
+    border-radius: 8px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
 }
 
-.match-card {
-  margin-bottom: 14px;
+/* 表格增强 */
+.table {
+    border-radius: 8px;
+    overflow: hidden;
+}
+.table thead th {
+    background: #f8f9fa;
+    border-bottom: 2px solid var(--dh-red-light);
+    font-weight: 600;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #555;
+}
+.table tbody tr:hover {
+    background: #fef5f5;
 }
 
-/* 辅助文字 */
-.small-text {
-  font-size: 12px;
-  color: #666;
+/* 按钮增强 */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-primary {
+    background: var(--dh-red);
+    border-color: var(--dh-red);
+}
+.btn-primary:hover {
+    background: var(--dh-accent);
+    border-color: var(--dh-accent);
+}
+.btn-success { background: #27ae60; border-color: #27ae60; }
+.btn-success:hover { background: #2ecc71; border-color: #2ecc71; }
+
+/* 输入框增强 */
+.form-control:focus {
+    border-color: var(--dh-red-light);
+    box-shadow: 0 0 0 0.2rem rgba(231,76,60,0.15);
 }
 
-.code-text {
-  font-size: 12px;
-  word-break: break-all;
-  color: #555;
+/* Badge 增强 */
+.badge {
+    font-weight: 500;
+    border-radius: 4px;
 }
 
-.muted-box {
-  background: #f8f9fa;
-  border: 1px solid #ececec;
-  border-radius: 12px;
-  padding: 10px;
-}
-
-/* Loading 遮罩 */
+/* 加载框 */
 #loadingBox {
-  display: none;
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, .55);
-  z-index: 9999;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
 }
-
 #loadingBox > div {
-  background: white;
-  width: 420px;
-  max-width: 90vw;
-  margin: 180px auto;
-  padding: 30px;
-  border-radius: 12px;
-  text-align: center;
+    background: #fff;
+    padding: 32px 48px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
 }
 
-#loadingBox h4 {
-  font-weight: 800;
-}
-
-#loadingBox p {
-  font-size: 14px;
-}
-
-/* Toast 提示框 */
-#dhToastBox {
-  position: fixed;
-  top: 22px;
-  right: 22px;
-  z-index: 99999;
-  width: 360px;
-  max-width: calc(100vw - 44px);
-  pointer-events: none;
-}
-
+/* 提示框 */
 .dh-toast {
-  background: #111827;
-  color: #fff;
-  border-radius: 10px;
-  padding: 13px 15px;
-  margin-bottom: 10px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
-  font-size: 14px;
-  line-height: 1.6;
-  pointer-events: auto;
-  word-break: break-word;
-  opacity: 1;
-  transform: translateY(0);
-  transition: all .25s ease;
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    min-width: 280px;
+    padding: 14px 20px;
+    border-radius: 8px;
+    color: #fff;
+    font-size: 14px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+    animation: dhSlideIn 0.3s ease;
+}
+.dh-toast.success { background: #27ae60; }
+.dh-toast.error { background: var(--dh-red); }
+.dh-toast.warn { background: var(--dh-gold); }
+
+@keyframes dhSlideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
 }
 
-.dh-toast.toast-success {
-  background: #065f46;
+/* 登录页 */
+.login-page {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.login-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 40px;
+    width: 380px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.login-card .logo-area {
+    text-align: center;
+    margin-bottom: 32px;
+}
+.login-card .logo-area h3 {
+    font-weight: 700;
+    color: var(--dh-dark);
+}
+.login-card .logo-area p {
+    color: #999;
+    font-size: 13px;
+}
+.login-card input {
+    height: 44px;
+    border-radius: 8px;
+}
+.login-card .btn-login {
+    height: 44px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 15px;
 }
 
-.dh-toast.toast-warn {
-  background: #92400e;
+/* 直播页 */
+.live-page {
+    background: #000;
+    min-height: 100vh;
 }
-
-.dh-toast.toast-error {
-  background: #991b1b;
+.live-header {
+    background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    padding: 12px 16px;
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 12px;
 }
-
-/* 二维码图片 */
-.qr-img {
-  width: 92px;
-  height: 92px;
-  object-fit: cover;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  background: #fff;
+.live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--dh-red);
+    color: #fff;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
 }
-
-/* 状态徽章 */
-.status-badge {
-  font-size: 13px;
+.live-badge::before {
+    content: '';
+    width: 8px; height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
 }
-
-/* 操作按钮行 */
-.action-row button {
-  margin: 3px 4px 3px 0;
-}
-
-/* 直播源文本截断 */
-.stream-text {
-  max-width: 520px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.copy-text {
-  font-size: 12px;
-  color: #555;
-  word-break: break-all;
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
 }
